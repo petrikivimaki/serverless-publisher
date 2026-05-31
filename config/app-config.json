@@ -1,0 +1,125 @@
+{
+  "title": "Publisher",
+  "description": "A client-side markdown knowledge base publisher.",
+  "site": {
+    "url": "https://username.github.io/",
+    "customDomain": "",
+    "hashRouting": true
+  },
+  "defaultFile": "README.md",
+  "home": {
+    "title": "Publisher",
+    "subtitle": "A client-side knowledge base for publishing markdown vaults.",
+    "ctas": [
+      {
+        "title": "What Publisher does",
+        "description": "A quick orientation to the project.",
+        "path": "start/publisher.md"
+      },
+      {
+        "title": "Setup workflow",
+        "description": "Clone, configure, write, and publish.",
+        "path": "workflow/setup.md"
+      },
+      {
+        "title": "Markdown basics",
+        "description": "Core syntax and project extensions.",
+        "path": "reference/markdown.md"
+      }
+    ],
+    "background": {
+      "enabled": false,
+      "image": "",
+      "grayscale": true
+    }
+  },
+  "github": {
+    "enabled": false,
+    "owner": "",
+    "repo": "",
+    "branch": "",
+    "rootPath": "",
+    "assetRootPath": ""
+  },
+  "localFallback": {
+    "enabled": true,
+    "manifest": "docs/manifest.json"
+  },
+  "externalLinks": {
+    "utm": {
+      "enabled": false,
+      "params": {
+        "utm_source": "publisher",
+        "utm_medium": "referral",
+        "utm_campaign": "knowledge-base"
+      }
+    }
+  },
+  "maps": {
+    "enabled": true,
+    "fallback": {
+      "latitude": 60,
+      "longitude": 24,
+      "zoom": 11
+    },
+    "grayscale": false
+  },
+  "reading": {
+    "wordsPerMinute": 225
+  },
+  "obsidian": {
+    "vault": "Publisher",
+    "rootPath": ""
+  },
+  "linktree": {
+    "links": [
+      {
+        "label": "GitHub",
+        "type": "github",
+        "url": "https://github.com/"
+      },
+      {
+        "label": "YouTube",
+        "type": "youtube",
+        "url": "https://youtube.com/"
+      },
+      {
+        "label": "Discord",
+        "type": "discord",
+        "url": "https://discord.com/"
+      }
+    ]
+  },
+  "contentRights": {
+    "copyright": "(c) 2026 Publisher",
+    "license": "CC BY 4.0"
+  },
+  "metadata": {
+    "allowedKeys": [
+      "title",
+      "tags",
+      "authors",
+      "license",
+      "copyright",
+      "status"
+    ]
+  },
+  "pageLoadAnimation": {
+    "enabled": false,
+    "logo": "",
+    "durationMs": 1500,
+    "fadeMs": 420
+  },
+  "appearance": {
+    "fontSize": 18,
+    "textAlign": "left",
+    "lineHeight": 1.68,
+    "theme": "dark",
+    "firstDayOfWeek": 1
+  },
+  "features": {
+    "showFrontmatter": true,
+    "showBacklinks": true,
+    "showGraph": true
+  }
+}

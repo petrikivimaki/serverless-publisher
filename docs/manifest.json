@@ -1,0 +1,12 @@
+{
+	"files": [
+		"README.md",
+		"start/publisher.md",
+		"start/concepts/obsidian.md",
+		"start/concepts/github-pages.md",
+		"workflow/setup.md",
+		"workflow/publish.md",
+		"reference/markdown.md",
+		"reference/extensions/obsidian-and-publisher.md"
+	]
+}
