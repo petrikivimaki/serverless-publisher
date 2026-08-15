@@ -261,6 +261,7 @@
 				"textAlign",
 				"lineHeight",
 				"theme",
+				"soundEnabled",
 				"firstDayOfWeek"
 			],
 			"properties": {
@@ -306,6 +307,10 @@
 						"ocean",
 						"dark"
 					]
+				},
+				"soundEnabled": {
+					"type": "boolean",
+					"description": "Enables Cuelume interaction sounds by default. Readers can override this preference locally."
 				},
 				"firstDayOfWeek": {
 					"type": "integer",

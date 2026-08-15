@@ -35,7 +35,7 @@ You can keep Markdown files in the Papyrus repository, or in a separate public r
 
 Update `config/app-config.json`, then test the site locally.
 
-The `appearance` section defines the initial theme, typeface, text alignment, font size, leading, and reading measure. Readers can override those defaults from the floating quick-settings popover; Papyrus saves their choices in that browser. See [[reference/interface]] for the complete shell and navigation behavior.
+The `appearance` section defines the initial theme, sound state, typeface, text alignment, font size, leading, and reading measure. Set `soundEnabled` to control whether Cuelume interaction cues start on. Readers can override those defaults from the floating quick-settings popover; Papyrus saves their choices in that browser. See [[reference/interface]] for the complete shell and navigation behavior.
 
 ## 4. Write your vault
 

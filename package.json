@@ -2,10 +2,10 @@
 	"name": "papyrus",
 	"description": "Papyrus is a Markdown knowledge base frontend for Obsidian and GitHub Pages",
 	"author": {
-    "name": "Petri Mikael Kivimäki",
-    "url": "https://pmk.dev"
-  },
-  "type": "module",
+		"name": "Petri Mikael Kivimäki",
+		"url": "https://pmk.dev"
+	},
+	"type": "module",
 	"scripts": {
 		"dev": "python3 -m http.server 4242"
 	}

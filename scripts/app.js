@@ -1,6 +1,12 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked@18.0.4/+esm";
 import Prism from "https://cdn.jsdelivr.net/npm/prismjs@1.30.0/+esm";
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
+import {
+	bind as bindCuelume,
+	play as playCuelume,
+	setEnabled as setCuelumeEnabled,
+	setVolume as setCuelumeVolume
+} from "https://cdn.jsdelivr.net/npm/cuelume@0.2.2/+esm";
 import "https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-json.min.js";
 import "https://cdn.jsdelivr.net/npm/prismjs@1.30.0/plugins/autoloader/prism-autoloader.min.js";
 
@@ -27,6 +33,7 @@ const state = {
 	maps: [],
 	rightCollapsed: true,
 	settingsOpen: false,
+	soundEnabled: true,
 	qrCodeTimer: 0,
 	selectedText: "",
 	scrollTopFrame: 0,
@@ -43,6 +50,7 @@ const minimumSelectionCharacters = 5;
 const maximumQrCodeCharacters = 100;
 const minimumScrollTopOffset = 800;
 const qrCodeVisibleMs = 18000;
+const soundEffectsVolume = 0.36;
 const themes = [
 	{ id: "light", label: "Light" },
 	{ id: "sand", label: "Sand" },
@@ -88,6 +96,7 @@ const selectors = {
 	scrollTopButton: "[data-action='scroll-top']",
 	selectionCount: "[data-selection-count]",
 	selectionMenu: "[data-selection-menu]",
+	soundChoice: "[data-sound-choice]",
 	sourceArticleLink: "[data-source-article-link]",
 	sourceDownloadLink: "[data-source-download-link]",
 	sourceRepoLink: "[data-source-repo-link]",
@@ -138,9 +147,12 @@ async function loadVault() {
 		state.config = await fetchJson("config/app-config.json");
 		loadAnimation = startPageLoadAnimation();
 		loadAppearance();
+		applySoundSettings();
+		bindCuelume();
 		applyReaderSettings();
 		applyTheme();
 		renderReaderControls();
+		renderSoundControls();
 		renderThemeToggle();
 		document.title = state.config.title || "Papyrus";
 		select(selectors.vaultTitle).textContent = state.config.title || "Papyrus";
@@ -555,6 +567,7 @@ function bindEvents() {
 	bindTextOrientationControls();
 	bindFontFamilyControls();
 	bindThemeControls();
+	bindSoundControls();
 }
 
 /**
@@ -591,6 +604,30 @@ function bindThemeControls() {
 	for (let index = 0; index < controls.length; index += 1) {
 		controls[index].addEventListener("click", handleThemeChoice);
 	}
+}
+
+/**
+ * Binds sound preference controls.
+ * @returns {void}
+ */
+function bindSoundControls() {
+	const controls = selectAll(selectors.soundChoice);
+
+	for (let index = 0; index < controls.length; index += 1) {
+		controls[index].addEventListener("click", handleSoundChoice);
+	}
+}
+
+/**
+ * Adds Cuelume feedback to a dynamic navigation control.
+ * @param {object} params
+ * @param {HTMLElement} params.element
+ * @param {string} params.cue
+ * @returns {void}
+ */
+function addNavigationSound({ element, cue }) {
+	element.dataset.cuelumeHover = "tick";
+	element.dataset.cuelumeToggle = cue;
 }
 
 /**
@@ -737,6 +774,7 @@ function renderTreeNode({ node, depth, path, forceExpanded }) {
 		button.className = "tree-folder";
 		button.type = "button";
 		button.dataset.path = folderPath;
+		addNavigationSound({ element: button, cue: "toggle" });
 		button.setAttribute("aria-expanded", String(expanded));
 		button.innerHTML = `
 			<i class="fa-solid fa-caret-${expanded ? "down" : "right"} tree-caret" aria-hidden="true"></i>
@@ -803,6 +841,7 @@ function createNoteButton({ note }) {
 	button.className = "note-link";
 	button.type = "button";
 	button.dataset.path = note.path;
+	addNavigationSound({ element: button, cue: "page" });
 	button.classList.toggle("is-active", note.path === state.activePath);
 	button.innerHTML = `
 		<span class="note-link-title">${escapeHtml(note.title)}</span>
@@ -1176,6 +1215,7 @@ function createResultButton({ note, query }) {
 		<span class="result-excerpt">${escapeHtml(getExcerpt({ text: note.body, query }))}</span>
 	`;
 	button.dataset.path = note.path;
+	addNavigationSound({ element: button, cue: "page" });
 	button.addEventListener("click", handleNoteButtonClick);
 	return button;
 }
@@ -1199,6 +1239,7 @@ function renderGraph() {
 		button.className = "graph-button";
 		button.type = "button";
 		button.dataset.path = note.path;
+		addNavigationSound({ element: button, cue: "page" });
 		button.innerHTML = `
 			<span class="graph-title">${escapeHtml(note.title)}</span>
 			<span class="graph-path">${note.links.length} outgoing links</span>
@@ -2628,6 +2669,7 @@ function createLinkChip({ note }) {
 	button.className = "link-chip";
 	button.type = "button";
 	button.dataset.path = note.path;
+	addNavigationSound({ element: button, cue: "page" });
 	button.innerHTML = `<i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>${escapeHtml(note.title)}</span>`;
 	button.addEventListener("click", handleNoteButtonClick);
 	return button;
@@ -3909,6 +3951,11 @@ function loadAppearance() {
 	}
 
 	state.theme = getValidTheme(stored.theme || config.theme || "light") || "light";
+	state.soundEnabled = getBooleanPreference({
+		storedValue: stored.soundEnabled,
+		configuredValue: config.soundEnabled,
+		fallback: true
+	});
 	state.fontFamily = getValidFontFamily(stored.fontFamily || config.fontFamily || "modern");
 	state.textAlign = getValidTextAlign(stored.textAlign || config.textAlign || "left");
 	state.fontSize = clampNumber({
@@ -3929,6 +3976,26 @@ function loadAppearance() {
 }
 
 /**
+ * Resolves a stored boolean before a configured default.
+ * @param {object} params
+ * @param {*} params.storedValue
+ * @param {*} params.configuredValue
+ * @param {boolean} params.fallback
+ * @returns {boolean}
+ */
+function getBooleanPreference({ storedValue, configuredValue, fallback }) {
+	if (typeof storedValue === "boolean") {
+		return storedValue;
+	}
+
+	if (typeof configuredValue === "boolean") {
+		return configuredValue;
+	}
+
+	return fallback;
+}
+
+/**
  * Saves the current content appearance.
  * @returns {void}
  */
@@ -3939,6 +4006,7 @@ function saveAppearance() {
 			fontFamily: state.fontFamily,
 			fontSize: state.fontSize,
 			lineHeight: state.lineHeight,
+			soundEnabled: state.soundEnabled,
 			textAlign: state.textAlign,
 			theme: state.theme
 		}));
@@ -3964,6 +4032,54 @@ function renderThemeToggle() {
 
 	for (let index = 0; index < controls.length; index += 1) {
 		controls[index].setAttribute("aria-pressed", String(controls[index].dataset.themeChoice === state.theme));
+	}
+}
+
+/**
+ * Applies the sound preference and shared interaction volume.
+ * @returns {void}
+ */
+function applySoundSettings() {
+	setCuelumeVolume(soundEffectsVolume);
+	setCuelumeEnabled(state.soundEnabled);
+}
+
+/**
+ * Renders the active sound preference.
+ * @returns {void}
+ */
+function renderSoundControls() {
+	const controls = selectAll(selectors.soundChoice);
+
+	for (let index = 0; index < controls.length; index += 1) {
+		const isEnabledChoice = controls[index].dataset.soundChoice === "on";
+		controls[index].setAttribute("aria-pressed", String(isEnabledChoice === state.soundEnabled));
+	}
+}
+
+/**
+ * Applies a selected sound preference.
+ * @param {MouseEvent} event
+ * @returns {void}
+ */
+function handleSoundChoice(event) {
+	const soundEnabled = event.currentTarget.dataset.soundChoice === "on";
+
+	if (soundEnabled === state.soundEnabled) {
+		return;
+	}
+
+	if (!soundEnabled) {
+		playCuelume("droplet");
+	}
+
+	state.soundEnabled = soundEnabled;
+	applySoundSettings();
+	renderSoundControls();
+	saveAppearance();
+
+	if (soundEnabled) {
+		playCuelume("ready");
 	}
 }
 

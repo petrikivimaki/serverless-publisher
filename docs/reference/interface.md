@@ -25,9 +25,13 @@ Library, Search, and Details use active emphasis only while their corresponding 
 
 ## Quick settings
 
-Quick settings collect every content appearance control in one place: theme, typeface, alignment, text size, leading, and reading measure. The dependency-free typeface choices preserve the intent of Papyrus Pro with common web-safe fonts: **Literary** uses Georgia, **Modern** uses Arial, and **Monospace** uses Courier New. Changes apply immediately and are saved in browser storage. A saved reader preference takes precedence over the configured default on that browser.
+Quick settings collect every content experience control in one place: theme, sound, typeface, alignment, text size, leading, and reading measure. The icon-only sound control turns all Cuelume interaction cues on or off. The dependency-free typeface choices preserve the intent of Papyrus Pro with common web-safe fonts: **Literary** uses Georgia, **Modern** uses Arial, and **Monospace** uses Courier New. Changes apply immediately and are saved in browser storage. A saved reader preference takes precedence over the configured default on that browser.
 
-Site owners set the defaults under `appearance` in `config/app-config.json`. See [[workflow/setup]] for the rest of the runtime configuration workflow.
+Site owners set the defaults under `appearance` in `config/app-config.json`, including `soundEnabled`. See [[workflow/setup]] for the rest of the runtime configuration workflow.
+
+## Interaction sounds
+
+Papyrus uses Cuelume to synthesize lightweight Web Audio cues at runtime, so no audio files are downloaded. The floating navigation and the primary menu tabs use quiet hover and toggle feedback. File-tree folders use a toggle cue, while opening notes from the primary or secondary menu uses a page cue. Browsers may keep audio silent until the reader first interacts with the page.
 
 ## Responsive behavior
 

@@ -123,6 +123,7 @@
 		"textAlign": "left",
 		"lineHeight": 1.68,
 		"theme": "light",
+		"soundEnabled": true,
 		"firstDayOfWeek": 1
 	},
 	"features": {

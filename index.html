@@ -50,8 +50,8 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-		<link rel="stylesheet" href="styles/main.css?v=5" />
-		<script type="module" src="scripts/app.js?v=6"></script>
+		<link rel="stylesheet" href="styles/main.css?v=7" />
+		<script type="module" src="scripts/app.js?v=7"></script>
     </head>
     <body>
 		<div class="app-shell">
@@ -66,6 +66,8 @@
 							class="icon-button"
 							type="button"
 							data-action="refresh"
+							data-cuelume-hover="tick"
+							data-cuelume-toggle="loading"
 							aria-label="Refresh content"
 							title="Refresh content"
 						>
@@ -75,6 +77,8 @@
 							class="icon-button"
 							type="button"
 							data-action="close-left"
+							data-cuelume-hover="tick"
+							data-cuelume-toggle="droplet"
 							aria-label="Close primary menu"
 							title="Close primary menu"
 						>
@@ -84,22 +88,22 @@
 				</header>
 
 				<nav class="panel-tabs" aria-label="Primary menu views">
-					<button type="button" data-panel="files" aria-label="Library" title="Library">
+					<button type="button" data-panel="files" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Library" title="Library">
 						<i class="fa-solid fa-folder-tree" aria-hidden="true"></i>
 					</button>
-					<button type="button" data-panel="search" aria-label="Search" title="Search">
+					<button type="button" data-panel="search" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Search" title="Search">
 						<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
 					</button>
-					<button type="button" data-panel="calendar" aria-label="Calendar" title="Calendar">
+					<button type="button" data-panel="calendar" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Calendar" title="Calendar">
 						<i class="fa-regular fa-calendar-days" aria-hidden="true"></i>
 					</button>
-					<button type="button" data-panel="bookmarks" aria-label="Bookmarks" title="Bookmarks">
+					<button type="button" data-panel="bookmarks" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Bookmarks" title="Bookmarks">
 						<i class="fa-regular fa-bookmark" aria-hidden="true"></i>
 					</button>
-					<button type="button" data-panel="graph" aria-label="Graph" title="Graph">
+					<button type="button" data-panel="graph" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Graph" title="Graph">
 						<i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
 					</button>
-					<button type="button" data-panel="linktree" aria-label="Links" title="Links">
+					<button type="button" data-panel="linktree" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Links" title="Links">
 						<i class="fa-solid fa-link" aria-hidden="true"></i>
 					</button>
 				</nav>
@@ -262,6 +266,8 @@
 						class="icon-button"
 						type="button"
 						data-action="toggle-right"
+						data-cuelume-hover="tick"
+						data-cuelume-toggle="droplet"
 						aria-label="Close secondary menu"
 						title="Close secondary menu"
 					>
@@ -438,6 +444,17 @@
 						</button>
 					</div>
 				</div>
+				<div class="settings-row">
+					<span>Sound</span>
+					<div class="settings-options sound-options" aria-label="Sound effects">
+						<button type="button" data-sound-choice="on" aria-label="Sound effects on" title="Sound effects on">
+							<i class="fa-solid fa-volume-high" aria-hidden="true"></i>
+						</button>
+						<button type="button" data-sound-choice="off" aria-label="Sound effects off" title="Sound effects off">
+							<i class="fa-solid fa-volume-xmark" aria-hidden="true"></i>
+						</button>
+					</div>
+				</div>
 				<fieldset class="settings-row">
 					<legend>Typeface</legend>
 					<div class="settings-options" aria-label="Typeface">
@@ -494,24 +511,24 @@
 			</section>
 
 			<nav class="floating-navigation" aria-label="Main navigation">
-				<button type="button" data-action="open-home" aria-label="Home" title="Home">
+				<button type="button" data-action="open-home" data-cuelume-hover="tick" data-cuelume-toggle="page" aria-label="Home" title="Home">
 					<i class="fa-solid fa-house" aria-hidden="true"></i>
 					<span>Home</span>
 				</button>
-				<button type="button" data-panel="files" aria-label="Library" title="Library">
+				<button type="button" data-panel="files" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Library" title="Library">
 					<i class="fa-solid fa-folder-tree" aria-hidden="true"></i>
 					<span>Library</span>
 				</button>
-				<button type="button" data-panel="search" aria-label="Search" title="Search">
+				<button type="button" data-panel="search" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Search" title="Search">
 					<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
 					<span>Search</span>
 				</button>
-				<button type="button" data-action="scroll-top" aria-label="Scroll to top" title="Scroll to top" hidden>
+				<button type="button" data-action="scroll-top" data-cuelume-hover="tick" data-cuelume-toggle="droplet" aria-label="Scroll to top" title="Scroll to top" hidden>
 					<i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
 					<span>Top</span>
 				</button>
 				<span class="navigation-divider" aria-hidden="true"></span>
-				<button type="button" data-action="toggle-right" aria-label="Article details" title="Article details">
+				<button type="button" data-action="toggle-right" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Article details" title="Article details">
 					<i class="fa-solid fa-sliders" aria-hidden="true"></i>
 					<span>Details</span>
 				</button>
@@ -519,6 +536,8 @@
 					type="button"
 					data-action="toggle-settings"
 					data-theme-toggle
+					data-cuelume-hover="tick"
+					data-cuelume-toggle
 					aria-label="Quick settings"
 					aria-controls="quick-settings"
 					aria-expanded="false"

@@ -12,6 +12,7 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 - Wiki links, backlinks, and outgoing link lists
 - Full-vault search over titles, paths, tags, and body text
 - Browser-local bookmarks using `localStorage`
+- Runtime-generated Cuelume interaction sounds with a saved on/off control
 - Calendar panel with configurable first day of week
 - Configurable home screen and startup animation
 - Inline MapLibre maps with `map:[lat,lon,zoom]`
@@ -19,10 +20,10 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 
 ## Quick Start
 
-Serve the project with any static file server:
+Start the dependency-free static development server:
 
 ```sh
-python3 -m http.server 4242
+npm run dev
 ```
 
 Then open:
@@ -75,7 +76,8 @@ External links can receive configured UTM parameters by enabling `externalLinks.
 
 ## Dependencies
 
-Papyrus imports Marked and PrismJS from jsDelivr. Marked handles Markdown parsing, and PrismJS handles syntax highlighting with the Prism Tomorrow theme. No build step or package installation is required.
+Papyrus imports Marked, PrismJS, QRCode, and Cuelume directly from version-pinned jsDelivr URLs. Marked handles Markdown parsing, PrismJS handles syntax highlighting with the Prism Tomorrow theme, QRCode renders selected-text codes, and Cuelume synthesizes interaction sounds at runtime. The static app has no package installation or build step.
+
 MapLibre GL JS is loaded only when a note contains a map directive.
 
 ## Content
