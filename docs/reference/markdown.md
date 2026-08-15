@@ -6,7 +6,7 @@ tags: markdown, syntax
 
 # Markdown Basics
 
-Markdown is a plain-text format for structured writing. Publisher uses [Marked](https://marked.js.org/) to render Markdown in the browser.
+Markdown is a plain-text format for structured writing. Papyrus uses [Marked](https://marked.js.org/) to render Markdown in the browser.
 
 ## Core syntax
 

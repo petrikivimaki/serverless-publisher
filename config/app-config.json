@@ -1,6 +1,6 @@
 {
-  "title": "Publisher",
-  "description": "A client-side markdown knowledge base publisher.",
+  "title": "Papyrus",
+  "description": "A client-side Markdown knowledge base frontend.",
   "site": {
     "url": "https://username.github.io/",
     "customDomain": "",
@@ -8,13 +8,13 @@
   },
   "defaultFile": "README.md",
   "home": {
-    "title": "Publisher",
+    "title": "Papyrus",
     "subtitle": "A client-side knowledge base for publishing markdown vaults.",
     "ctas": [
       {
-        "title": "What Publisher does",
+        "title": "What Papyrus does",
         "description": "A quick orientation to the project.",
-        "path": "start/publisher.md"
+        "path": "start/papyrus.md"
       },
       {
         "title": "Setup workflow",
@@ -49,7 +49,7 @@
     "utm": {
       "enabled": false,
       "params": {
-        "utm_source": "publisher",
+        "utm_source": "papyrus",
         "utm_medium": "referral",
         "utm_campaign": "knowledge-base"
       }
@@ -68,7 +68,7 @@
     "wordsPerMinute": 225
   },
   "obsidian": {
-    "vault": "Publisher",
+    "vault": "Papyrus",
     "rootPath": ""
   },
   "linktree": {
@@ -91,7 +91,7 @@
     ]
   },
   "contentRights": {
-    "copyright": "(c) 2026 Publisher",
+    "copyright": "(c) 2026 Papyrus",
     "license": "CC BY 4.0"
   },
   "metadata": {

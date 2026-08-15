@@ -1,12 +1,12 @@
 ---
-title: What Publisher Does
+title: What Papyrus Does
 status: draft
-tags: publisher, github-pages, obsidian
+tags: papyrus, github-pages, obsidian
 ---
 
-# What Publisher Does
+# What Papyrus Does
 
-Publisher is a static frontend for Markdown knowledge bases. It is designed for people who like writing in [Obsidian](https://obsidian.md/) but want a lightweight public website that can run on [GitHub Pages](https://pages.github.com/) without a backend.
+Papyrus is a static frontend for Markdown knowledge bases. It is designed for people who like writing in [Obsidian](https://obsidian.md/) but want a lightweight public website that can run on [GitHub Pages](https://pages.github.com/) without a backend.
 
 The app provides:
 
@@ -17,7 +17,7 @@ The app provides:
 - Bookmarks stored in the browser
 - Reader controls, themes, table of contents, and share links
 
-Publisher does not replace your editor. It publishes the files you already write.
+Papyrus does not replace your editor. It publishes the files you already write.
 
 ## How content flows
 
@@ -26,6 +26,6 @@ Publisher does not replace your editor. It publishes the files you already write
 | Write | Obsidian or another Markdown editor | Local `.md` files |
 | Save | Git | Versioned content |
 | Push | GitHub | Public repository |
-| Publish | GitHub Pages and Publisher | Static website |
+| Publish | GitHub Pages and Papyrus | Static website |
 
 For the practical version, continue to [[workflow/setup]].

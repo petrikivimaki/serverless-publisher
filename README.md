@@ -1,6 +1,6 @@
-# Publisher
+# Papyrus
 
-Publisher is a client-side markdown knowledge base frontend for GitHub Pages. It is shaped like a lightweight Obsidian-style reader: file tree, search, calendar, bookmarks, backlinks, article metadata, and markdown rendering all run in the browser without a backend.
+Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It is shaped like a lightweight Obsidian-style reader: file tree, search, calendar, bookmarks, backlinks, article metadata, and Markdown rendering all run in the browser without a backend.
 
 ## Features
 
@@ -69,18 +69,18 @@ The bundled local demo vault lives in:
 docs
 ```
 
-It doubles as a short Publisher guide and as sample content for local testing. The active demo manifest is configured at `docs/manifest.json`.
+It doubles as a short Papyrus guide and as sample content for local testing. The active demo manifest is configured at `docs/manifest.json`.
 
 External links can receive configured UTM parameters by enabling `externalLinks.utm` in `config/app-config.json`.
 
 ## Dependencies
 
-Publisher imports Marked and PrismJS from jsDelivr. Marked handles Markdown parsing, and PrismJS handles syntax highlighting with the Prism Tomorrow theme. No build step or package installation is required.
+Papyrus imports Marked and PrismJS from jsDelivr. Marked handles Markdown parsing, and PrismJS handles syntax highlighting with the Prism Tomorrow theme. No build step or package installation is required.
 MapLibre GL JS is loaded only when a note contains a map directive.
 
 ## Content
 
-Publisher expects markdown files (`.md` or `.mdx`). Frontmatter is optional:
+Papyrus expects Markdown files (`.md` or `.mdx`). Frontmatter is optional:
 
 ```md
 ---

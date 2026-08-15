@@ -1,7 +1,7 @@
 {
 	"$schema": "./app-config.schema.json",
-	"title": "Publisher",
-	"description": "A client-side markdown knowledge base publisher.",
+	"title": "Papyrus",
+	"description": "A client-side Markdown knowledge base frontend.",
 	"site": {
 		"url": "https://your-user-or-org.github.io/",
 		"customDomain": "",
@@ -9,7 +9,7 @@
 	},
 	"defaultFile": "README.md",
 	"home": {
-		"title": "Publisher",
+		"title": "Papyrus",
 		"subtitle": "A client-side knowledge base for publishing markdown vaults.",
 		"ctas": [
 			{
@@ -45,7 +45,7 @@
 		"utm": {
 			"enabled": true,
 			"params": {
-				"utm_source": "publisher",
+				"utm_source": "papyrus",
 				"utm_medium": "referral",
 				"utm_campaign": "knowledge-base"
 			}

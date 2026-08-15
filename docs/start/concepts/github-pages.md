@@ -8,7 +8,7 @@ tags: github, git, github-pages
 
 [Git](https://git-scm.com/) tracks changes to files. [GitHub](https://github.com/) hosts Git repositories. [GitHub Pages](https://pages.github.com/) publishes static websites from a repository.
 
-Publisher fits that model because it is only HTML, CSS, JavaScript, JSON, images, and Markdown. There is no server to run.
+Papyrus fits that model because it is only HTML, CSS, JavaScript, JSON, images, and Markdown. There is no server to run.
 
 ## Two common repository setups
 
@@ -17,7 +17,7 @@ Publisher fits that model because it is only HTML, CSS, JavaScript, JSON, images
 | One repository | Small personal sites where app and content move together |
 | App repository plus content repository | Larger vaults or editorial workflows where content changes more often than the app |
 
-The config file decides where Publisher loads content from. For a remote vault, update `config/app-config.json` with your GitHub owner, repository, branch, and optional root folder.
+The config file decides where Papyrus loads content from. For a remote vault, update `config/app-config.json` with your GitHub owner, repository, branch, and optional root folder.
 
 ```json
 {

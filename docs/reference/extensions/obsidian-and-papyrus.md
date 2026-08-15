@@ -1,13 +1,13 @@
 ---
-title: Obsidian and Publisher Extensions
+title: Obsidian and Papyrus Extensions
 status: reference
-tags: obsidian, publisher, syntax
+tags: obsidian, papyrus, syntax
 license: CC BY 4.0
 ---
 
-# Obsidian and Publisher Extensions
+# Obsidian and Papyrus Extensions
 
-Publisher supports standard Markdown plus a few conventions that are useful for published vaults.
+Papyrus supports standard Markdown plus a few conventions that are useful for published vaults.
 
 ## Frontmatter
 
@@ -16,7 +16,7 @@ Frontmatter is metadata at the top of a note.
 ```md
 ---
 title: Example Note
-tags: publisher, markdown
+tags: papyrus, markdown
 status: draft
 ---
 ```
@@ -32,7 +32,7 @@ Use Obsidian-style links to connect notes:
 [[workflow/setup|Setup workflow]]
 ```
 
-Publisher resolves those links against the loaded vault and builds backlinks automatically.
+Papyrus resolves those links against the loaded vault and builds backlinks automatically.
 
 ## Markdown links to notes
 

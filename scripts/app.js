@@ -33,8 +33,8 @@ const state = {
 	toastTimer: 0
 };
 
-const bookmarkStorageKey = "publisher.bookmarks";
-const themeStorageKey = "publisher.theme";
+const bookmarkStorageKey = "papyrus.bookmarks";
+const themeStorageKey = "papyrus.theme";
 const githubTreeCache = new Map();
 const minimumSelectionCharacters = 5;
 const maximumQrCodeCharacters = 100;
@@ -137,8 +137,8 @@ async function loadVault() {
 		applyTheme();
 		renderReaderControls();
 		renderThemeToggle();
-		document.title = state.config.title || "Publisher";
-		select(selectors.vaultTitle).textContent = state.config.title || "Publisher";
+		document.title = state.config.title || "Papyrus";
+		select(selectors.vaultTitle).textContent = state.config.title || "Papyrus";
 		state.files = await loadFiles({ config: state.config });
 		state.notes = indexNotes({ files: state.files });
 		select(selectors.vaultSource).textContent = getVaultSourceLabel({ config: state.config });
@@ -273,7 +273,7 @@ async function loadFiles({ config }) {
  * @returns {Promise<Array<object>>}
  */
 async function loadLocalFiles({ manifestPath }) {
-	const manifestResponse = await fetch(manifestPath);
+	const manifestResponse = await fetch(manifestPath, { cache: "no-cache" });
 
 	if (!manifestResponse.ok) {
 		return [];
@@ -1325,7 +1325,7 @@ function openNote({ path, updateHash = true }) {
  */
 function renderHome() {
 	const article = select(selectors.article);
-	const title = state.config.home?.title || state.config.title || "Publisher";
+	const title = state.config.home?.title || state.config.title || "Papyrus";
 	const subtitle = state.config.home?.subtitle || state.config.description || "A client-side markdown knowledge base.";
 	const background = getHomeBackground();
 	const backgroundClass = getHomeClassName({ background });

@@ -8,13 +8,13 @@ tags: setup, workflow, github-pages
 
 This is the short path from a local vault to a public site.
 
-## 1. Clone Publisher
+## 1. Clone Papyrus
 
-Create your own copy of the Publisher repository on GitHub, then clone it:
+Create your own copy of the Papyrus repository on GitHub, then clone it:
 
 ```sh
-git clone https://github.com/your-user-or-org/publisher.git
-cd publisher
+git clone https://github.com/your-user-or-org/papyrus.git
+cd papyrus
 ```
 
 Serve it locally with any static file server:
@@ -31,7 +31,7 @@ In the repository settings, enable GitHub Pages. GitHub's guide is the canonical
 
 ## 3. Choose a content repository
 
-You can keep Markdown files in the Publisher repository, or in a separate public repository. Separate content is usually cleaner once the vault grows.
+You can keep Markdown files in the Papyrus repository, or in a separate public repository. Separate content is usually cleaner once the vault grows.
 
 Update `config/app-config.json`, then test the site locally.
 

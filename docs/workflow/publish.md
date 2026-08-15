@@ -10,7 +10,7 @@ After setup, publishing is mostly a writing loop.
 
 1. Edit Markdown files locally.
 2. Preview the vault in Obsidian.
-3. Run Publisher locally and check navigation.
+3. Run Papyrus locally and check navigation.
 4. Commit the changes with Git.
 5. Push to GitHub.
 6. Let GitHub Pages serve the updated site.
@@ -22,7 +22,7 @@ git commit -m "Update docs"
 git push
 ```
 
-If your content lives in a separate repository, run the Git commands there instead of in the Publisher app repository.
+If your content lives in a separate repository, run the Git commands there instead of in the Papyrus app repository.
 
 ## Practical checks
 

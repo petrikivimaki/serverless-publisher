@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "https://example.com/publisher/app-config.schema.json",
-	"title": "Publisher app config",
+	"$id": "https://example.com/papyrus/app-config.schema.json",
+	"title": "Papyrus app config",
 	"type": "object",
 	"additionalProperties": false,
 	"required": [
