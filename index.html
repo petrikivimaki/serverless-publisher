@@ -50,128 +50,59 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-        <link rel="stylesheet" href="styles/main.css" />
-        <script type="module" src="scripts/app.js?v=1"></script>
+		<link rel="stylesheet" href="styles/main.css?v=5" />
+		<script type="module" src="scripts/app.js?v=6"></script>
     </head>
     <body>
-        <div class="app-shell">
-            <aside class="rail" aria-label="Primary tools">
-                <button
-                    class="rail-button is-active"
-                    type="button"
-                    data-action="open-home"
-                    aria-label="Home"
-                    title="Home"
-                >
-                    <i class="fa-solid fa-house" aria-hidden="true"></i>
-                </button>
-                <button
-                    class="rail-button is-active"
-                    type="button"
-                    data-panel="files"
-                    aria-label="Files"
-                    title="Files"
-                >
-                    <i class="fa-solid fa-folder-tree" aria-hidden="true"></i>
-                </button>
-                <button
-                    class="rail-button"
-                    type="button"
-                    data-panel="search"
-                    aria-label="Search"
-                    title="Search"
-                >
-                    <i
-                        class="fa-solid fa-magnifying-glass"
-                        aria-hidden="true"
-                    ></i>
-                </button>
-                <button
-                    class="rail-button"
-                    type="button"
-                    data-panel="calendar"
-                    aria-label="Calendar"
-                    title="Calendar"
-                >
-                    <i
-                        class="fa-regular fa-calendar-days"
-                        aria-hidden="true"
-                    ></i>
-                </button>
-                <button
-                    class="rail-button"
-                    type="button"
-                    data-panel="bookmarks"
-                    aria-label="Bookmarks"
-                    title="Bookmarks"
-                >
-                    <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
-                </button>
-                <button
-                    class="rail-button"
-                    type="button"
-                    data-panel="graph"
-                    aria-label="Graph"
-                    title="Graph"
-                >
-                    <i
-                        class="fa-solid fa-diagram-project"
-                        aria-hidden="true"
-                    ></i>
-                </button>
-                <button
-                    class="rail-button"
-                    type="button"
-                    data-panel="linktree"
-                    aria-label="Linktree"
-                    title="Linktree"
-                >
-                    <i class="fa-solid fa-link" aria-hidden="true"></i>
-                </button>
-                <div class="rail-spacer" aria-hidden="true"></div>
-                <button
-                    class="rail-button"
-                    type="button"
-                    data-action="rotate-theme"
-                    aria-label="Change theme"
-                    title="Theme: Light"
-                    data-theme-toggle
-                >
-                    <i
-                        class="fa-solid fa-circle-half-stroke"
-                        aria-hidden="true"
-                    ></i>
-                </button>
-                <button
-                    class="rail-button"
-                    type="button"
-                    data-action="toggle-right"
-                    aria-label="Article info"
-                    title="Article info"
-                >
-                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-                </button>
-            </aside>
+		<div class="app-shell">
+			<aside class="left-panel" data-left-panel>
+				<header class="panel-header">
+					<div>
+						<p class="eyebrow" data-vault-source>Local vault</p>
+						<h1 data-vault-title>Papyrus</h1>
+					</div>
+					<div class="panel-header-actions">
+						<button
+							class="icon-button"
+							type="button"
+							data-action="refresh"
+							aria-label="Refresh content"
+							title="Refresh content"
+						>
+							<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+						</button>
+						<button
+							class="icon-button"
+							type="button"
+							data-action="close-left"
+							aria-label="Close primary menu"
+							title="Close primary menu"
+						>
+							<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+						</button>
+					</div>
+				</header>
 
-            <aside class="left-panel" data-left-panel>
-                <header class="panel-header">
-                    <div>
-                        <p class="eyebrow" data-vault-source>Local vault</p>
-                        <h1 data-vault-title>Papyrus</h1>
-                    </div>
-                    <button
-                        class="icon-button"
-                        type="button"
-                        data-action="refresh"
-                        aria-label="Refresh content"
-                        title="Refresh content"
-                    >
-                        <i
-                            class="fa-solid fa-rotate-right"
-                            aria-hidden="true"
-                        ></i>
-                    </button>
-                </header>
+				<nav class="panel-tabs" aria-label="Primary menu views">
+					<button type="button" data-panel="files" aria-label="Library" title="Library">
+						<i class="fa-solid fa-folder-tree" aria-hidden="true"></i>
+					</button>
+					<button type="button" data-panel="search" aria-label="Search" title="Search">
+						<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+					</button>
+					<button type="button" data-panel="calendar" aria-label="Calendar" title="Calendar">
+						<i class="fa-regular fa-calendar-days" aria-hidden="true"></i>
+					</button>
+					<button type="button" data-panel="bookmarks" aria-label="Bookmarks" title="Bookmarks">
+						<i class="fa-regular fa-bookmark" aria-hidden="true"></i>
+					</button>
+					<button type="button" data-panel="graph" aria-label="Graph" title="Graph">
+						<i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
+					</button>
+					<button type="button" data-panel="linktree" aria-label="Links" title="Links">
+						<i class="fa-solid fa-link" aria-hidden="true"></i>
+					</button>
+				</nav>
 
                 <section
                     class="panel-view is-active"
@@ -321,13 +252,22 @@
                 </article>
             </main>
 
-            <aside class="right-panel" data-right-panel>
-                <header class="panel-header">
-                    <div>
-                        <p class="eyebrow">Context</p>
-                        <h2>Article info</h2>
-                    </div>
-                </header>
+			<aside class="right-panel" data-right-panel>
+				<header class="panel-header">
+					<div>
+						<p class="eyebrow">Context</p>
+						<h2>Article info</h2>
+					</div>
+					<button
+						class="icon-button"
+						type="button"
+						data-action="toggle-right"
+						aria-label="Close secondary menu"
+						title="Close secondary menu"
+					>
+						<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+					</button>
+				</header>
                 <section
                     class="info-section qr-code-block"
                     data-qr-code-block
@@ -450,97 +390,7 @@
                         </a>
                     </div>
                 </section>
-                <section class="info-section">
-                    <h3>Text</h3>
-                    <div class="reader-controls" aria-label="Text controls">
-                        <label class="range-control">
-                            <span
-                                >Font size
-                                <output data-font-size-value>18px</output></span
-                            >
-                            <input
-                                type="range"
-                                min="14"
-                                max="24"
-                                step="1"
-                                value="18"
-                                data-font-size
-                            />
-                        </label>
-                        <fieldset class="orientation-control">
-                            <legend>Orientation</legend>
-                            <label title="Align left">
-                                <input
-                                    type="radio"
-                                    name="text-orientation"
-                                    value="left"
-                                    data-text-orientation
-                                />
-                                <i
-                                    class="fa-solid fa-align-left"
-                                    aria-hidden="true"
-                                ></i>
-                                <span>Left</span>
-                            </label>
-                            <label title="Align center">
-                                <input
-                                    type="radio"
-                                    name="text-orientation"
-                                    value="center"
-                                    data-text-orientation
-                                />
-                                <i
-                                    class="fa-solid fa-align-center"
-                                    aria-hidden="true"
-                                ></i>
-                                <span>Center</span>
-                            </label>
-                            <label title="Justify text">
-                                <input
-                                    type="radio"
-                                    name="text-orientation"
-                                    value="justify"
-                                    data-text-orientation
-                                />
-                                <i
-                                    class="fa-solid fa-align-justify"
-                                    aria-hidden="true"
-                                ></i>
-                                <span>Justified</span>
-                            </label>
-                            <label title="Align right">
-                                <input
-                                    type="radio"
-                                    name="text-orientation"
-                                    value="right"
-                                    data-text-orientation
-                                />
-                                <i
-                                    class="fa-solid fa-align-right"
-                                    aria-hidden="true"
-                                ></i>
-                                <span>Right</span>
-                            </label>
-                        </fieldset>
-                        <label class="range-control">
-                            <span
-                                >Line height
-                                <output data-line-height-value
-                                    >1.68</output
-                                ></span
-                            >
-                            <input
-                                type="range"
-                                min="1.2"
-                                max="2.2"
-                                step="0.05"
-                                value="1.68"
-                                data-line-height
-                            />
-                        </label>
-                    </div>
-                </section>
-                <section class="info-section">
+				<section class="info-section">
                     <h3>Metadata</h3>
                     <dl class="metadata-list" data-metadata-list></dl>
                 </section>
@@ -560,8 +410,125 @@
                     <h3>Outgoing links</h3>
                     <div class="link-list" data-outgoing-list></div>
                 </section>
-            </aside>
-        </div>
+			</aside>
+		</div>
+
+		<div class="floating-navigation-wrap">
+			<section
+				id="quick-settings"
+				class="quick-settings"
+				data-quick-settings
+				aria-label="Content appearance"
+				hidden
+			>
+				<div class="settings-row">
+					<span>Theme</span>
+					<div class="settings-options theme-options" aria-label="Theme">
+						<button type="button" data-theme-choice="light" aria-label="Light theme" title="Light theme">
+							<i class="fa-regular fa-sun" aria-hidden="true"></i>
+						</button>
+						<button type="button" data-theme-choice="sand" aria-label="Sand theme" title="Sand theme">
+							<i class="fa-solid fa-wheat-awn" aria-hidden="true"></i>
+						</button>
+						<button type="button" data-theme-choice="ocean" aria-label="Ocean theme" title="Ocean theme">
+							<i class="fa-solid fa-water" aria-hidden="true"></i>
+						</button>
+						<button type="button" data-theme-choice="dark" aria-label="Dark theme" title="Dark theme">
+							<i class="fa-regular fa-moon" aria-hidden="true"></i>
+						</button>
+					</div>
+				</div>
+				<fieldset class="settings-row">
+					<legend>Typeface</legend>
+					<div class="settings-options" aria-label="Typeface">
+						<label title="Literary — Georgia">
+							<input type="radio" name="content-typeface" value="literary" data-font-family aria-label="Literary — Georgia" />
+							<span class="is-literary">Ag</span>
+						</label>
+						<label title="Modern — Arial">
+							<input type="radio" name="content-typeface" value="modern" data-font-family aria-label="Modern — Arial" />
+							<span class="is-modern">Ag</span>
+						</label>
+						<label title="Monospace — Courier New">
+							<input type="radio" name="content-typeface" value="monospace" data-font-family aria-label="Monospace — Courier New" />
+							<span class="is-monospace">Ag</span>
+						</label>
+					</div>
+				</fieldset>
+				<fieldset class="settings-row">
+					<legend>Alignment</legend>
+					<div class="settings-options" aria-label="Text alignment">
+						<label title="Align left">
+							<input type="radio" name="text-orientation" value="left" data-text-orientation />
+							<i class="fa-solid fa-align-left" aria-hidden="true"></i>
+						</label>
+						<label title="Align center">
+							<input type="radio" name="text-orientation" value="center" data-text-orientation />
+							<i class="fa-solid fa-align-center" aria-hidden="true"></i>
+						</label>
+						<label title="Justify text">
+							<input type="radio" name="text-orientation" value="justify" data-text-orientation />
+							<i class="fa-solid fa-align-justify" aria-hidden="true"></i>
+						</label>
+						<label title="Align right">
+							<input type="radio" name="text-orientation" value="right" data-text-orientation />
+							<i class="fa-solid fa-align-right" aria-hidden="true"></i>
+						</label>
+					</div>
+				</fieldset>
+				<label class="settings-range">
+					<span>Size</span>
+					<input type="range" min="14" max="24" step="1" value="18" data-font-size />
+					<output data-font-size-value>18px</output>
+				</label>
+				<label class="settings-range">
+					<span>Leading</span>
+					<input type="range" min="1.2" max="2.2" step="0.05" value="1.68" data-line-height />
+					<output data-line-height-value>1.68</output>
+				</label>
+				<label class="settings-range">
+					<span>Measure</span>
+					<input type="range" min="560" max="960" step="20" value="820" data-content-width />
+					<output data-content-width-value>820px</output>
+				</label>
+			</section>
+
+			<nav class="floating-navigation" aria-label="Main navigation">
+				<button type="button" data-action="open-home" aria-label="Home" title="Home">
+					<i class="fa-solid fa-house" aria-hidden="true"></i>
+					<span>Home</span>
+				</button>
+				<button type="button" data-panel="files" aria-label="Library" title="Library">
+					<i class="fa-solid fa-folder-tree" aria-hidden="true"></i>
+					<span>Library</span>
+				</button>
+				<button type="button" data-panel="search" aria-label="Search" title="Search">
+					<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+					<span>Search</span>
+				</button>
+				<button type="button" data-action="scroll-top" aria-label="Scroll to top" title="Scroll to top" hidden>
+					<i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+					<span>Top</span>
+				</button>
+				<span class="navigation-divider" aria-hidden="true"></span>
+				<button type="button" data-action="toggle-right" aria-label="Article details" title="Article details">
+					<i class="fa-solid fa-sliders" aria-hidden="true"></i>
+					<span>Details</span>
+				</button>
+				<button
+					type="button"
+					data-action="toggle-settings"
+					data-theme-toggle
+					aria-label="Quick settings"
+					aria-controls="quick-settings"
+					aria-expanded="false"
+					title="Quick settings"
+				>
+					<i class="fa-solid fa-gear" aria-hidden="true"></i>
+					<span>Settings</span>
+				</button>
+			</nav>
+		</div>
 
         <div class="selection-menu" data-selection-menu hidden>
             <div class="selection-count" data-selection-count>0 characters</div>

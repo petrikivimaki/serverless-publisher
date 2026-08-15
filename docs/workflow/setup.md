@@ -35,6 +35,8 @@ You can keep Markdown files in the Papyrus repository, or in a separate public r
 
 Update `config/app-config.json`, then test the site locally.
 
+The `appearance` section defines the initial theme, typeface, text alignment, font size, leading, and reading measure. Readers can override those defaults from the floating quick-settings popover; Papyrus saves their choices in that browser. See [[reference/interface]] for the complete shell and navigation behavior.
+
 ## 4. Write your vault
 
 Use Obsidian or another Markdown editor to create notes. Link notes with wiki links, add frontmatter when useful, and keep media paths predictable.

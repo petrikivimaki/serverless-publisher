@@ -255,6 +255,8 @@
 			"type": "object",
 			"additionalProperties": false,
 			"required": [
+				"contentWidth",
+				"fontFamily",
 				"fontSize",
 				"textAlign",
 				"lineHeight",
@@ -262,6 +264,21 @@
 				"firstDayOfWeek"
 			],
 			"properties": {
+				"contentWidth": {
+					"type": "integer",
+					"minimum": 560,
+					"maximum": 960,
+					"multipleOf": 20,
+					"description": "Maximum reading measure in pixels."
+				},
+				"fontFamily": {
+					"type": "string",
+					"enum": [
+						"literary",
+						"modern",
+						"monospace"
+					]
+				},
 				"fontSize": {
 					"type": "integer",
 					"minimum": 14,

@@ -117,6 +117,8 @@
 		"fadeMs": 420
 	},
 	"appearance": {
+		"contentWidth": 820,
+		"fontFamily": "modern",
 		"fontSize": 18,
 		"textAlign": "left",
 		"lineHeight": 1.68,

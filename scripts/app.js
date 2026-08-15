@@ -15,9 +15,10 @@ const state = {
 	notes: [],
 	activePath: "",
 	activePanel: "files",
-	activeRail: "home",
 	activeView: "home",
 	calendarDate: new Date(),
+	contentWidth: 820,
+	fontFamily: "modern",
 	fontSize: 18,
 	lineHeight: 1.68,
 	leftCollapsed: true,
@@ -25,8 +26,10 @@ const state = {
 	mapLibrePromise: null,
 	maps: [],
 	rightCollapsed: true,
+	settingsOpen: false,
 	qrCodeTimer: 0,
 	selectedText: "",
+	scrollTopFrame: 0,
 	theme: "light",
 	textAlign: "left",
 	tocState: {},
@@ -34,12 +37,12 @@ const state = {
 };
 
 const bookmarkStorageKey = "papyrus.bookmarks";
-const themeStorageKey = "papyrus.theme";
+const appearanceStorageKey = "papyrus.appearance";
 const githubTreeCache = new Map();
 const minimumSelectionCharacters = 5;
 const maximumQrCodeCharacters = 100;
+const minimumScrollTopOffset = 800;
 const qrCodeVisibleMs = 18000;
-const scrollUpCharacterThreshold = 2000;
 const themes = [
 	{ id: "light", label: "Light" },
 	{ id: "sand", label: "Sand" },
@@ -60,12 +63,15 @@ const selectors = {
 	calendarWeekdays: "[data-calendar-weekdays]",
 	fileFilter: "[data-file-filter]",
 	fileTree: "[data-file-tree]",
+	fontFamily: "[data-font-family]",
 	fontSizeInput: "[data-font-size]",
 	fontSizeValue: "[data-font-size-value]",
 	graphList: "[data-graph-list]",
 	leftPanel: "[data-left-panel]",
 	lineHeightInput: "[data-line-height]",
 	lineHeightValue: "[data-line-height-value]",
+	contentWidthInput: "[data-content-width]",
+	contentWidthValue: "[data-content-width-value]",
 	linktreeList: "[data-linktree-list]",
 	metadataList: "[data-metadata-list]",
 	outgoingList: "[data-outgoing-list]",
@@ -75,9 +81,11 @@ const selectors = {
 	qrCodeImage: "[data-qr-code-image]",
 	qrCodeSummary: "[data-qr-code-summary]",
 	qrSelectionButton: "[data-action='qr-selection']",
+	quickSettings: "[data-quick-settings]",
 	rightPanel: "[data-right-panel]",
 	searchInput: "[data-search-input]",
 	searchResults: "[data-search-results]",
+	scrollTopButton: "[data-action='scroll-top']",
 	selectionCount: "[data-selection-count]",
 	selectionMenu: "[data-selection-menu]",
 	sourceArticleLink: "[data-source-article-link]",
@@ -129,10 +137,7 @@ async function loadVault() {
 	try {
 		state.config = await fetchJson("config/app-config.json");
 		loadAnimation = startPageLoadAnimation();
-		state.fontSize = Number(state.config.appearance?.fontSize || 18);
-		state.lineHeight = Number(state.config.appearance?.lineHeight || 1.68);
-		state.textAlign = getValidTextAlign(state.config.appearance?.textAlign || "left");
-		state.theme = getInitialTheme();
+		loadAppearance();
 		applyReaderSettings();
 		applyTheme();
 		renderReaderControls();
@@ -505,9 +510,16 @@ function bindEvents() {
 		button.addEventListener("click", handlePanelButtonClick);
 	}
 
-	select("[data-action='toggle-right']").addEventListener("click", toggleRightPanel);
-	select("[data-action='rotate-theme']").addEventListener("click", rotateTheme);
+	const rightPanelButtons = selectAll("[data-action='toggle-right']");
+
+	for (let index = 0; index < rightPanelButtons.length; index += 1) {
+		rightPanelButtons[index].addEventListener("click", toggleRightPanel);
+	}
+
 	select("[data-action='open-home']").addEventListener("click", openHome);
+	select("[data-action='close-left']").addEventListener("click", closeLeftPanel);
+	select("[data-action='scroll-top']").addEventListener("click", scrollArticleToTop);
+	select("[data-action='toggle-settings']").addEventListener("click", toggleQuickSettings);
 	select("[data-action='refresh']").addEventListener("click", loadVault);
 	select("[data-action='previous-month']").addEventListener("click", showPreviousMonth);
 	select("[data-action='next-month']").addEventListener("click", showNextMonth);
@@ -525,8 +537,10 @@ function bindEvents() {
 	select(selectors.fileFilter).addEventListener("input", renderFileTree);
 	select(selectors.searchInput).addEventListener("input", renderSearch);
 	select(selectors.article).addEventListener("click", handleArticleClick);
+	select(selectors.article).addEventListener("scroll", handleArticleScroll, { passive: true });
 	select(selectors.fontSizeInput).addEventListener("input", handleFontSizeInput);
 	select(selectors.lineHeightInput).addEventListener("input", handleLineHeightInput);
+	select(selectors.contentWidthInput).addEventListener("input", handleContentWidthInput);
 	select(selectors.tocList).addEventListener("click", handleTocClick);
 	window.addEventListener("hashchange", openRouteFromHash);
 	window.addEventListener("popstate", openRouteFromHash);
@@ -534,9 +548,13 @@ function bindEvents() {
 	document.addEventListener("pointerdown", handleDocumentPointerDown);
 	document.addEventListener("click", handleDocumentClick);
 	document.addEventListener("keyup", handleDocumentKeyUp);
+	document.addEventListener("keydown", handleDocumentKeyDown);
 	window.addEventListener("scroll", hideSelectionMenu, true);
 	window.addEventListener("resize", hideSelectionMenu);
+	window.addEventListener("resize", renderScrollTopButton);
 	bindTextOrientationControls();
+	bindFontFamilyControls();
+	bindThemeControls();
 }
 
 /**
@@ -548,6 +566,30 @@ function bindTextOrientationControls() {
 
 	for (let index = 0; index < controls.length; index += 1) {
 		controls[index].addEventListener("change", handleTextOrientationChange);
+	}
+}
+
+/**
+ * Binds content typeface controls.
+ * @returns {void}
+ */
+function bindFontFamilyControls() {
+	const controls = selectAll(selectors.fontFamily);
+
+	for (let index = 0; index < controls.length; index += 1) {
+		controls[index].addEventListener("change", handleFontFamilyChange);
+	}
+}
+
+/**
+ * Binds theme choice controls.
+ * @returns {void}
+ */
+function bindThemeControls() {
+	const controls = selectAll("[data-theme-choice]");
+
+	for (let index = 0; index < controls.length; index += 1) {
+		controls[index].addEventListener("click", handleThemeChoice);
 	}
 }
 
@@ -599,10 +641,11 @@ function renderPanels() {
 	}
 
 	for (let index = 0; index < buttons.length; index += 1) {
-		buttons[index].classList.toggle("is-active", buttons[index].dataset.panel === state.activeRail);
+		const isActive = !state.leftCollapsed && buttons[index].dataset.panel === state.activePanel;
+		buttons[index].classList.toggle("is-active", isActive);
 	}
 
-	homeButton.classList.toggle("is-active", state.activeRail === "home");
+	homeButton.classList.remove("is-active");
 }
 
 /**
@@ -612,15 +655,27 @@ function renderPanels() {
  * @returns {void}
  */
 function setPanel({ panel }) {
+	closeQuickSettings();
+
 	if (!state.leftCollapsed && state.activePanel === panel) {
 		state.leftCollapsed = true;
+		renderPanels();
 		renderShell();
 		return;
 	}
 
 	state.activePanel = panel;
-	state.activeRail = panel;
 	state.leftCollapsed = false;
+	renderPanels();
+	renderShell();
+}
+
+/**
+ * Closes the primary side menu.
+ * @returns {void}
+ */
+function closeLeftPanel() {
+	state.leftCollapsed = true;
 	renderPanels();
 	renderShell();
 }
@@ -1278,10 +1333,10 @@ function openInitialNote() {
  */
 function openHome({ updateHash = true } = {}) {
 	state.activePath = "";
-	state.activeRail = "home";
 	state.activeView = "home";
 	state.leftCollapsed = true;
 	state.rightCollapsed = true;
+	closeQuickSettings();
 	clearQrCodeBlock();
 	updateLocationHash({ hash: "", updateHash });
 	renderHome();
@@ -1308,7 +1363,6 @@ function openNote({ path, updateHash = true }) {
 	}
 
 	state.activePath = note.path;
-	state.activeRail = state.activePanel;
 	state.activeView = "note";
 	updateLocationHash({ hash: getNoteHash({ path: note.path }), updateHash });
 	renderArticle({ note });
@@ -1345,6 +1399,7 @@ function renderHome() {
 			</div>
 		</div>
 	`;
+	renderScrollTopButton();
 }
 
 /**
@@ -1501,34 +1556,12 @@ function renderArticle({ note }) {
 	removeArticleMaps();
 	article.classList.remove("is-home");
 	article.classList.toggle("has-header", Boolean(headerImage));
-	article.innerHTML = `${header}<div class="article-inner">${content}${createScrollUpMarkup({ note })}</div>`;
+	article.innerHTML = `${header}<div class="article-inner">${content}</div>`;
 	initializeArticleCodeBlocks();
 	highlightArticleCode();
 	initializeArticleMaps();
 	typesetArticleMath({ markdown: note.body });
-}
-
-/**
- * Creates a bottom scroll-up control for long notes.
- * @param {object} params
- * @param {object} params.note
- * @returns {string}
- */
-function createScrollUpMarkup({ note }) {
-	const articleText = getArticleText({ markdown: note.body });
-
-	if (countCharacters(articleText) < scrollUpCharacterThreshold) {
-		return "";
-	}
-
-	return `
-		<div class="scroll-up-wrap">
-			<button class="scroll-up-button" type="button" data-action="scroll-article-up">
-				<i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
-				<span>Scroll up</span>
-			</button>
-		</div>
-	`;
+	renderScrollTopButton();
 }
 
 /**
@@ -2606,14 +2639,6 @@ function createLinkChip({ note }) {
  * @returns {void}
  */
 function handleArticleClick(event) {
-	const action = event.target.closest("[data-action='scroll-article-up']");
-
-	if (action) {
-		event.preventDefault();
-		scrollArticleToTop();
-		return;
-	}
-
 	const codeCopyAction = event.target.closest("[data-action='copy-code-block']");
 
 	if (codeCopyAction) {
@@ -2733,6 +2758,32 @@ function scrollArticleToTop() {
 		top: 0,
 		behavior: "smooth"
 	});
+}
+
+/**
+ * Schedules the contextual scroll-top button update.
+ * @returns {void}
+ */
+function handleArticleScroll() {
+	if (state.scrollTopFrame) {
+		return;
+	}
+
+	state.scrollTopFrame = window.requestAnimationFrame(() => {
+		state.scrollTopFrame = 0;
+		renderScrollTopButton();
+	});
+}
+
+/**
+ * Shows the scroll-top button after a substantial reading distance.
+ * @returns {void}
+ */
+function renderScrollTopButton() {
+	const article = select(selectors.article);
+	const button = select(selectors.scrollTopButton);
+	const threshold = Math.max(minimumScrollTopOffset, article.clientHeight);
+	button.hidden = article.scrollTop < threshold;
 }
 
 /**
@@ -2868,9 +2919,14 @@ function positionSelectionMenu({ menu, rect }) {
  */
 function handleDocumentPointerDown(event) {
 	const menu = select(selectors.selectionMenu);
+	const settingsWrap = event.target.closest(".floating-navigation-wrap");
 
 	if (!menu.hidden && !menu.contains(event.target)) {
 		hideSelectionMenu();
+	}
+
+	if (state.settingsOpen && !settingsWrap) {
+		closeQuickSettings();
 	}
 }
 
@@ -2901,6 +2957,18 @@ function handleDocumentClick(event) {
  */
 function handleDocumentKeyUp() {
 	window.requestAnimationFrame(renderSelectionMenu);
+}
+
+/**
+ * Handles global keyboard shortcuts.
+ * @param {KeyboardEvent} event
+ * @returns {void}
+ */
+function handleDocumentKeyDown(event) {
+	if (event.key === "Escape" && state.settingsOpen) {
+		closeQuickSettings();
+		select("[data-action='toggle-settings']").focus();
+	}
 }
 
 /**
@@ -3777,50 +3845,103 @@ function toggleRightPanel() {
 }
 
 /**
+ * Toggles the anchored content appearance popover.
+ * @returns {void}
+ */
+function toggleQuickSettings() {
+	state.settingsOpen = !state.settingsOpen;
+	renderQuickSettings();
+}
+
+/**
+ * Closes the content appearance popover.
+ * @returns {void}
+ */
+function closeQuickSettings() {
+	if (!state.settingsOpen) {
+		return;
+	}
+
+	state.settingsOpen = false;
+	renderQuickSettings();
+}
+
+/**
+ * Renders the quick settings popover state.
+ * @returns {void}
+ */
+function renderQuickSettings() {
+	const popover = select(selectors.quickSettings);
+	const toggle = select("[data-action='toggle-settings']");
+	popover.hidden = !state.settingsOpen;
+	toggle.setAttribute("aria-expanded", String(state.settingsOpen));
+}
+
+/**
  * Renders shell layout state.
  * @returns {void}
  */
 function renderShell() {
 	const shell = select(selectors.appShell);
-	const rightToggle = select("[data-action='toggle-right']");
+	const rightToggles = selectAll("[data-action='toggle-right']");
 	shell.classList.toggle("is-left-collapsed", state.leftCollapsed);
 	shell.classList.toggle("is-right-collapsed", state.rightCollapsed);
-	rightToggle.hidden = !state.activePath;
-}
 
-/**
- * Gets the initial theme from storage or app config.
- * @returns {string}
- */
-function getInitialTheme() {
-	const storedTheme = readStoredTheme();
-
-	if (storedTheme) {
-		return storedTheme;
-	}
-
-	return getValidTheme(state.config.appearance?.theme || "light") || "light";
-}
-
-/**
- * Reads the saved theme.
- * @returns {string}
- */
-function readStoredTheme() {
-	try {
-		return getValidTheme(window.localStorage.getItem(themeStorageKey) || "");
-	} catch (error) {
-		return "";
+	for (let index = 0; index < rightToggles.length; index += 1) {
+		rightToggles[index].hidden = !state.activePath;
+		rightToggles[index].classList.toggle("is-active", !state.rightCollapsed);
 	}
 }
 
 /**
- * Saves the current theme.
+ * Loads content appearance from local storage and app config.
  * @returns {void}
  */
-function saveTheme() {
+function loadAppearance() {
+	const config = state.config.appearance || {};
+	let stored = {};
+
 	try {
-		window.localStorage.setItem(themeStorageKey, state.theme);
+		const parsed = JSON.parse(window.localStorage.getItem(appearanceStorageKey) || "{}");
+		stored = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+	} catch (error) {
+		showStorageWarning();
+	}
+
+	state.theme = getValidTheme(stored.theme || config.theme || "light") || "light";
+	state.fontFamily = getValidFontFamily(stored.fontFamily || config.fontFamily || "modern");
+	state.textAlign = getValidTextAlign(stored.textAlign || config.textAlign || "left");
+	state.fontSize = clampNumber({
+		value: Number(stored.fontSize ?? config.fontSize ?? 18),
+		minimum: 14,
+		maximum: 24
+	});
+	state.lineHeight = clampNumber({
+		value: Number(stored.lineHeight ?? config.lineHeight ?? 1.68),
+		minimum: 1.2,
+		maximum: 2.2
+	});
+	state.contentWidth = clampNumber({
+		value: Number(stored.contentWidth ?? config.contentWidth ?? 820),
+		minimum: 560,
+		maximum: 960
+	});
+}
+
+/**
+ * Saves the current content appearance.
+ * @returns {void}
+ */
+function saveAppearance() {
+	try {
+		window.localStorage.setItem(appearanceStorageKey, JSON.stringify({
+			contentWidth: state.contentWidth,
+			fontFamily: state.fontFamily,
+			fontSize: state.fontSize,
+			lineHeight: state.lineHeight,
+			textAlign: state.textAlign,
+			theme: state.theme
+		}));
 	} catch (error) {
 		showStorageWarning();
 	}
@@ -3839,26 +3960,23 @@ function applyTheme() {
  * @returns {void}
  */
 function renderThemeToggle() {
-	const button = select(selectors.themeToggle);
-	const theme = getThemeById({ id: state.theme });
-	const label = theme ? theme.label : "Light";
+	const controls = selectAll("[data-theme-choice]");
 
-	button.title = `Theme: ${label}`;
-	button.setAttribute("aria-label", `Change theme. Current theme: ${label}`);
+	for (let index = 0; index < controls.length; index += 1) {
+		controls[index].setAttribute("aria-pressed", String(controls[index].dataset.themeChoice === state.theme));
+	}
 }
 
 /**
- * Rotates to the next available theme.
+ * Applies a selected theme.
+ * @param {MouseEvent} event
  * @returns {void}
  */
-function rotateTheme() {
-	const currentIndex = getThemeIndex({ id: state.theme });
-	const nextIndex = (currentIndex + 1) % themes.length;
-	state.theme = themes[nextIndex].id;
+function handleThemeChoice(event) {
+	state.theme = getValidTheme(event.currentTarget.dataset.themeChoice) || "light";
 	applyTheme();
 	renderThemeToggle();
-	saveTheme();
-	showToast({ message: `Theme: ${themes[nextIndex].label}` });
+	saveAppearance();
 }
 
 /**
@@ -3867,23 +3985,8 @@ function rotateTheme() {
  * @returns {string}
  */
 function getValidTheme(value) {
-	const theme = getThemeById({ id: getNormalizedThemeId(value) });
+	const theme = getThemeById({ id: String(value || "") });
 	return theme ? theme.id : "";
-}
-
-/**
- * Gets the current theme id for legacy names.
- * @param {string} value
- * @returns {string}
- */
-function getNormalizedThemeId(value) {
-	const legacyThemes = {
-		"sand-light": "sand",
-		"blue-dark": "ocean"
-	};
-	const id = String(value || "");
-
-	return legacyThemes[id] || id;
 }
 
 /**
@@ -3902,30 +4005,22 @@ function getThemeById({ id }) {
 	return null;
 }
 
-/**
- * Gets a theme index by id.
- * @param {object} params
- * @param {string} params.id
- * @returns {number}
- */
-function getThemeIndex({ id }) {
-	for (let index = 0; index < themes.length; index += 1) {
-		if (themes[index].id === id) {
-			return index;
-		}
-	}
-
-	return 0;
-}
 
 /**
  * Applies reader settings to CSS variables.
  * @returns {void}
  */
 function applyReaderSettings() {
+	const fontFamilies = {
+		literary: 'Georgia, "Times New Roman", serif',
+		modern: 'Arial, Helvetica, sans-serif',
+		monospace: '"Courier New", Courier, monospace'
+	};
 	document.documentElement.style.setProperty("--article-font-size", `${state.fontSize}px`);
 	document.documentElement.style.setProperty("--article-line-height", String(state.lineHeight));
 	document.documentElement.style.setProperty("--article-text-align", state.textAlign);
+	document.documentElement.style.setProperty("--article-font-family", fontFamilies[state.fontFamily]);
+	document.documentElement.style.setProperty("--article-measure", `${state.contentWidth}px`);
 }
 
 /**
@@ -3934,19 +4029,28 @@ function applyReaderSettings() {
  */
 function renderReaderControls() {
 	const orientations = selectAll(selectors.textOrientation);
+	const fontFamilies = selectAll(selectors.fontFamily);
 	const fontSizeInput = select(selectors.fontSizeInput);
 	const fontSizeValue = select(selectors.fontSizeValue);
 	const lineHeightInput = select(selectors.lineHeightInput);
 	const lineHeightValue = select(selectors.lineHeightValue);
+	const contentWidthInput = select(selectors.contentWidthInput);
+	const contentWidthValue = select(selectors.contentWidthValue);
 
 	for (let index = 0; index < orientations.length; index += 1) {
 		orientations[index].checked = orientations[index].value === state.textAlign;
+	}
+
+	for (let index = 0; index < fontFamilies.length; index += 1) {
+		fontFamilies[index].checked = fontFamilies[index].value === state.fontFamily;
 	}
 
 	fontSizeInput.value = String(state.fontSize);
 	fontSizeValue.textContent = `${state.fontSize}px`;
 	lineHeightInput.value = String(state.lineHeight);
 	lineHeightValue.textContent = state.lineHeight.toFixed(2);
+	contentWidthInput.value = String(state.contentWidth);
+	contentWidthValue.textContent = `${state.contentWidth}px`;
 }
 
 /**
@@ -3962,6 +4066,7 @@ function handleFontSizeInput(event) {
 	});
 	applyReaderSettings();
 	renderReaderControls();
+	saveAppearance();
 }
 
 /**
@@ -3977,6 +4082,23 @@ function handleLineHeightInput(event) {
 	});
 	applyReaderSettings();
 	renderReaderControls();
+	saveAppearance();
+}
+
+/**
+ * Handles content measure input.
+ * @param {InputEvent} event
+ * @returns {void}
+ */
+function handleContentWidthInput(event) {
+	state.contentWidth = clampNumber({
+		value: Number(event.currentTarget.value),
+		minimum: 560,
+		maximum: 960
+	});
+	applyReaderSettings();
+	renderReaderControls();
+	saveAppearance();
 }
 
 /**
@@ -3988,6 +4110,36 @@ function handleTextOrientationChange(event) {
 	state.textAlign = getValidTextAlign(event.currentTarget.value);
 	applyReaderSettings();
 	renderReaderControls();
+	saveAppearance();
+}
+
+/**
+ * Handles content typeface changes.
+ * @param {Event} event
+ * @returns {void}
+ */
+function handleFontFamilyChange(event) {
+	state.fontFamily = getValidFontFamily(event.currentTarget.value);
+	applyReaderSettings();
+	renderReaderControls();
+	saveAppearance();
+}
+
+/**
+ * Gets a supported content typeface value.
+ * @param {string} value
+ * @returns {string}
+ */
+function getValidFontFamily(value) {
+	const validValues = ["literary", "modern", "monospace"];
+
+	for (let index = 0; index < validValues.length; index += 1) {
+		if (validValues[index] === value) {
+			return value;
+		}
+	}
+
+	return "modern";
 }
 
 /**
