@@ -2689,6 +2689,14 @@ function handleArticleClick(event) {
 		return;
 	}
 
+	const tableCopyAction = event.target.closest("[data-action='copy-table']");
+
+	if (tableCopyAction) {
+		event.preventDefault();
+		copyArticleTable({ button: tableCopyAction });
+		return;
+	}
+
 	const codeToggleAction = event.target.closest("[data-action='toggle-code-block']");
 
 	if (codeToggleAction) {
@@ -2723,21 +2731,88 @@ async function copyArticleCodeBlock({ button }) {
 	}) : false;
 
 	if (copied) {
-		showCodeCopiedState({ button });
+		showCopyButtonCopiedState({ button });
 	}
 }
 
 /**
- * Shows temporary copied state on a code copy button.
+ * Copies a rendered table as tab-separated text.
+ * @param {object} params
+ * @param {HTMLElement} params.button
+ * @returns {Promise<void>}
+ */
+async function copyArticleTable({ button }) {
+	const embed = button.closest(".table-embed");
+	const table = embed?.querySelector("table");
+	const text = table ? getTableClipboardText({ table }) : "";
+	const copied = text ? await copyText({
+		text,
+		successMessage: "Table copied."
+	}) : false;
+
+	if (copied) {
+		showCopyButtonCopiedState({ button });
+	}
+}
+
+/**
+ * Gets tab-separated text from a rendered table.
+ * @param {object} params
+ * @param {HTMLTableElement} params.table
+ * @returns {string}
+ */
+function getTableClipboardText({ table }) {
+	const rows = table.querySelectorAll("tr");
+	const lines = [];
+
+	for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+		const cells = rows[rowIndex].querySelectorAll("th, td");
+		const values = [];
+
+		for (let cellIndex = 0; cellIndex < cells.length; cellIndex += 1) {
+			values.push(normalizeTableCellText(cells[cellIndex].textContent || ""));
+		}
+
+		lines.push(values.join("\t"));
+	}
+
+	return lines.join("\n");
+}
+
+/**
+ * Normalizes table cell text for clipboard output.
+ * @param {string} text
+ * @returns {string}
+ */
+function normalizeTableCellText(text) {
+	return text.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Shows temporary copied state on a copy button.
  * @param {object} params
  * @param {HTMLElement} params.button
  * @returns {void}
  */
-function showCodeCopiedState({ button }) {
+function showCopyButtonCopiedState({ button }) {
 	const icon = button.querySelector("i");
 	const label = button.querySelector("span");
+	const activeTimer = Number(button.dataset.copyResetTimer);
+
+	if (!button.dataset.copyOriginalLabel) {
+		button.dataset.copyOriginalLabel = label?.textContent || "Copy";
+		button.dataset.copyOriginalIcon = icon?.className || "fa-regular fa-copy";
+		button.dataset.copyOriginalAriaLabel = button.getAttribute("aria-label") || "";
+		button.dataset.copyOriginalTitle = button.title;
+	}
+
+	if (Number.isFinite(activeTimer)) {
+		window.clearTimeout(activeTimer);
+	}
 
 	button.classList.add("is-copied");
+	button.setAttribute("aria-label", "Copied");
+	button.title = "Copied";
 
 	if (icon) {
 		icon.className = "fa-solid fa-check";
@@ -2747,17 +2822,27 @@ function showCodeCopiedState({ button }) {
 		label.textContent = "Copied";
 	}
 
-	window.setTimeout(function resetCodeCopyState() {
+	const resetTimer = window.setTimeout(function resetCopyButtonState() {
 		button.classList.remove("is-copied");
+		button.setAttribute("aria-label", button.dataset.copyOriginalAriaLabel);
+		button.title = button.dataset.copyOriginalTitle;
 
 		if (icon) {
-			icon.className = "fa-regular fa-copy";
+			icon.className = button.dataset.copyOriginalIcon;
 		}
 
 		if (label) {
-			label.textContent = "Copy";
+			label.textContent = button.dataset.copyOriginalLabel;
 		}
-	}, 1400);
+
+		delete button.dataset.copyOriginalAriaLabel;
+		delete button.dataset.copyOriginalIcon;
+		delete button.dataset.copyOriginalLabel;
+		delete button.dataset.copyOriginalTitle;
+		delete button.dataset.copyResetTimer;
+	}, 1800);
+
+	button.dataset.copyResetTimer = String(resetTimer);
 }
 
 /**
@@ -3174,12 +3259,90 @@ function resolveRenderedLinks({ html }) {
 	const links = template.content.querySelectorAll("a[href]");
 
 	addRenderedHeadingIds({ template });
+	wrapRenderedTables({ template });
 
 	for (let index = 0; index < links.length; index += 1) {
 		resolveRenderedLink({ link: links[index] });
 	}
 
 	return template.innerHTML;
+}
+
+/**
+ * Wraps rendered Markdown tables with generated headers and scroll containers.
+ * @param {object} params
+ * @param {HTMLTemplateElement} params.template
+ * @returns {void}
+ */
+function wrapRenderedTables({ template }) {
+	const tables = template.content.querySelectorAll("table");
+
+	for (let index = 0; index < tables.length; index += 1) {
+		const table = tables[index];
+		const embed = document.createElement("figure");
+		const header = createTableHeader({ table });
+		const scrollContainer = document.createElement("div");
+
+		embed.className = "table-embed";
+		scrollContainer.className = "table-scroll";
+		table.before(embed);
+		embed.append(header, scrollContainer);
+		scrollContainer.append(table);
+	}
+}
+
+/**
+ * Creates a generated header for a rendered Markdown table.
+ * @param {object} params
+ * @param {HTMLTableElement} params.table
+ * @returns {HTMLElement}
+ */
+function createTableHeader({ table }) {
+	const header = document.createElement("figcaption");
+	const summary = document.createElement("span");
+	const button = document.createElement("button");
+	const dimensions = getTableDimensions({ table });
+
+	header.className = "table-header";
+	summary.className = "table-summary";
+	summary.textContent = `${formatNumber(dimensions.rows)} ${dimensions.rows === 1 ? "row" : "rows"} × ${formatNumber(dimensions.columns)} ${dimensions.columns === 1 ? "column" : "columns"}`;
+	button.className = "table-action";
+	button.type = "button";
+	button.dataset.action = "copy-table";
+	button.setAttribute("aria-label", "Copy table");
+	button.title = "Copy table";
+	button.innerHTML = `<i class="fa-regular fa-copy" aria-hidden="true"></i><span>Copy</span>`;
+	header.append(summary, button);
+
+	return header;
+}
+
+/**
+ * Counts the body rows and maximum columns in a rendered table.
+ * @param {object} params
+ * @param {HTMLTableElement} params.table
+ * @returns {{ rows: number, columns: number }}
+ */
+function getTableDimensions({ table }) {
+	const body = table.querySelector("tbody");
+	const rows = table.querySelectorAll("tr");
+	let columns = 0;
+
+	for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+		const cells = rows[rowIndex].querySelectorAll("th, td");
+		let rowColumns = 0;
+
+		for (let cellIndex = 0; cellIndex < cells.length; cellIndex += 1) {
+			rowColumns += cells[cellIndex].colSpan;
+		}
+
+		columns = Math.max(columns, rowColumns);
+	}
+
+	return {
+		rows: body ? body.querySelectorAll("tr").length : rows.length,
+		columns
+	};
 }
 
 /**
