@@ -62,6 +62,8 @@ change: -0.42% · illustrative
 
 Papyrus turns a `pte` code fence into a complete linked periodic table. The symbols listed under `elements` receive highlighted styling. See [[reference/extensions/obsidian-and-papyrus|the periodic-table component contract]] for its properties and link configuration.
 
+Papyrus also renders Obsidian-compatible `mermaid` code fences as diagrams, including vault navigation from nodes marked with Mermaid's `internal-link` class. See [[reference/extensions/obsidian-and-papyrus#Mermaid diagrams|the Mermaid diagram guide]].
+
 ```pte
 label: Elements in caffeine
 elements: H, C, N, O

@@ -44,6 +44,8 @@ Papyrus places standard Markdown tables in a responsive scroll container. Each t
 
 Papyrus adds language and line-count metadata plus copy, line wrapping, and collapse controls to fenced code blocks. **Wrap** soft-wraps long lines within the available reading width and changes to **Unwrap** while active. JavaScript fences also include a **Run** action. Each run starts in a hidden, script-only iframe sandbox protected by a restrictive content security policy. Calls to `console.log`, `console.info`, `console.warn`, `console.error`, and `console.debug` appear in a console directly below the code block; returned values are not printed automatically. The console header provides dedicated controls to copy its output or close the console and stop its sandbox. Running the block again replaces its previous sandbox and console.
 
+The `mermaid` fence is rendered as an Obsidian-compatible diagram instead of a normal code block. See [[reference/extensions/obsidian-and-papyrus#Mermaid diagrams|Mermaid diagrams]] for examples and internal note links.
+
 ```js
 /**
  * Greets a reader.

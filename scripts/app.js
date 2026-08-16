@@ -1,4 +1,5 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked@18.0.4/+esm";
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.16.0/+esm";
 import Prism from "https://cdn.jsdelivr.net/npm/prismjs@1.30.0/+esm";
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 import {
@@ -1722,6 +1723,7 @@ function renderArticle({ note }) {
 	article.classList.remove("is-home");
 	article.classList.toggle("has-header", Boolean(headerImage));
 	article.innerHTML = `${header}<div class="article-inner">${content}</div>`;
+	initializeArticleMermaidDiagrams();
 	initializeArticleCodeBlocks();
 	highlightArticleCode();
 	initializeArticleMaps();
@@ -1752,6 +1754,177 @@ function createArticleHeaderImage({ src, grayscale }) {
  */
 function highlightArticleCode() {
 	Prism.highlightAllUnder(select(selectors.article));
+}
+
+/**
+ * Replaces Obsidian-style Mermaid code fences and starts diagram rendering.
+ * @returns {void}
+ */
+function initializeArticleMermaidDiagrams() {
+	const article = select(selectors.article);
+	const blocks = article.querySelectorAll("pre > code.language-mermaid");
+	const diagrams = [];
+
+	for (let index = 0; index < blocks.length; index += 1) {
+		const code = blocks[index];
+		const block = code.parentElement;
+
+		if (!block) {
+			continue;
+		}
+
+		const embed = document.createElement("figure");
+		const diagram = document.createElement("div");
+		const source = code.textContent.trim();
+
+		embed.className = "mermaid-embed";
+		diagram.className = "mermaid";
+		diagram.dataset.mermaidSource = source;
+		diagram.textContent = source;
+		embed.append(diagram);
+		block.replaceWith(embed);
+		diagrams.push(diagram);
+	}
+
+	renderArticleMermaidDiagrams({ diagrams });
+}
+
+/**
+ * Renders Mermaid diagram elements with the theme that matches Papyrus.
+ * @async
+ * @param {object} params
+ * @param {Array<HTMLElement>|NodeListOf<HTMLElement>} params.diagrams
+ * @returns {Promise<void>}
+ */
+async function renderArticleMermaidDiagrams({ diagrams }) {
+	if (!diagrams.length) {
+		return;
+	}
+
+	mermaid.initialize({
+		startOnLoad: false,
+		securityLevel: "strict",
+		theme: getMermaidTheme()
+	});
+
+	for (let index = 0; index < diagrams.length; index += 1) {
+		const diagram = diagrams[index];
+
+		try {
+			await mermaid.run({ nodes: [diagram] });
+			initializeMermaidInternalLinks({ diagram });
+		} catch (error) {
+			renderMermaidError({ diagram });
+		}
+	}
+}
+
+/**
+ * Gets the Mermaid theme for the active Papyrus color scheme.
+ * @returns {"default"|"dark"}
+ */
+function getMermaidTheme() {
+	return state.theme === "dark" || state.theme === "ocean" ? "dark" : "default";
+}
+
+/**
+ * Re-renders active diagrams after a theme change.
+ * @returns {void}
+ */
+function rerenderArticleMermaidDiagrams() {
+	const diagrams = select(selectors.article).querySelectorAll(".mermaid-embed .mermaid");
+
+	for (let index = 0; index < diagrams.length; index += 1) {
+		const diagram = diagrams[index];
+
+		diagram.classList.remove("is-error");
+		diagram.removeAttribute("aria-live");
+		diagram.removeAttribute("data-processed");
+		diagram.textContent = diagram.dataset.mermaidSource || "";
+	}
+
+	renderArticleMermaidDiagrams({ diagrams });
+}
+
+/**
+ * Makes Mermaid nodes with Obsidian's internal-link class open vault notes.
+ * @param {object} params
+ * @param {HTMLElement} params.diagram
+ * @returns {void}
+ */
+function initializeMermaidInternalLinks({ diagram }) {
+	const links = diagram.querySelectorAll(".internal-link");
+
+	for (let index = 0; index < links.length; index += 1) {
+		const link = links[index];
+		const label = (link.querySelector(".nodeLabel")?.textContent || link.textContent || "").trim();
+		const note = findNoteByWikiTarget({ target: label }) || findNoteByTitle({ title: label });
+
+		if (!note) {
+			link.classList.add("is-missing");
+			continue;
+		}
+
+		link.dataset.noteTarget = note.path;
+		link.setAttribute("aria-label", `Open ${note.title}`);
+		link.setAttribute("role", "link");
+		link.setAttribute("tabindex", "0");
+		link.addEventListener("keydown", handleMermaidInternalLinkKeyDown);
+	}
+}
+
+/**
+ * Finds a note whose configured or derived title matches a diagram label.
+ * @param {object} params
+ * @param {string} params.title
+ * @returns {object|undefined}
+ */
+function findNoteByTitle({ title }) {
+	const normalizedTitle = title.trim().toLowerCase();
+
+	for (let index = 0; index < state.notes.length; index += 1) {
+		if (state.notes[index].title.trim().toLowerCase() === normalizedTitle) {
+			return state.notes[index];
+		}
+	}
+
+	return undefined;
+}
+
+/**
+ * Opens a keyboard-activated internal Mermaid node.
+ * @param {KeyboardEvent} event
+ * @returns {void}
+ */
+function handleMermaidInternalLinkKeyDown(event) {
+	if (event.key !== "Enter" && event.key !== " ") {
+		return;
+	}
+
+	event.preventDefault();
+	openNote({ path: event.currentTarget.dataset.noteTarget });
+}
+
+/**
+ * Replaces a failed diagram with a readable source fallback.
+ * @param {object} params
+ * @param {HTMLElement} params.diagram
+ * @returns {void}
+ */
+function renderMermaidError({ diagram }) {
+	const message = document.createElement("strong");
+	const guidance = document.createElement("span");
+	const sourceBlock = document.createElement("pre");
+	const code = document.createElement("code");
+
+	message.textContent = "Diagram could not be rendered.";
+	guidance.textContent = "Check the Mermaid syntax below.";
+	code.textContent = diagram.dataset.mermaidSource || "";
+	sourceBlock.className = "mermaid-error-source";
+	sourceBlock.append(code);
+	diagram.classList.add("is-error");
+	diagram.setAttribute("aria-live", "polite");
+	diagram.replaceChildren(message, guidance, sourceBlock);
 }
 
 /**
@@ -4260,7 +4433,43 @@ function getFiniteNumber({ value, fallback }) {
  * @returns {string}
  */
 function replaceWikiLinks({ markdown }) {
-	return markdown
+	const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+	const output = [];
+
+	for (let index = 0; index < lines.length; index += 1) {
+		const opening = getFenceOpening(lines[index]);
+
+		if (!opening) {
+			output.push(replaceWikiLinksInText(lines[index]));
+			continue;
+		}
+
+		const closingIndex = findClosingFenceIndex({
+			lines,
+			startIndex: index + 1,
+			marker: opening.marker,
+			minimumLength: opening.length
+		});
+
+		if (closingIndex < 0) {
+			output.push(lines.slice(index).join("\n"));
+			break;
+		}
+
+		output.push(lines.slice(index, closingIndex + 1).join("\n"));
+		index = closingIndex;
+	}
+
+	return output.join("\n");
+}
+
+/**
+ * Replaces wiki links in Markdown text outside fenced code blocks.
+ * @param {string} text
+ * @returns {string}
+ */
+function replaceWikiLinksInText(text) {
+	return text
 		.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, createWikiLinkWithLabel)
 		.replace(/\[\[([^\]]+)\]\]/g, createWikiLink);
 }
@@ -5274,6 +5483,7 @@ function handleThemeChoice(event) {
 	applyTheme();
 	renderThemeToggle();
 	saveAppearance();
+	rerenderArticleMermaidDiagrams();
 }
 
 /**

@@ -193,8 +193,10 @@ button {
 	grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(250px, 300px);
 	grid-template-rows: minmax(0, 1fr);
 	height: 100vh;
-	min-height: 620px;
+	height: 100dvh;
+	min-height: 0;
 	overflow: hidden;
+	overscroll-behavior: none;
 }
 
 .app-shell.is-left-collapsed {
@@ -358,14 +360,17 @@ button {
 }
 
 .left-panel {
+	display: grid;
 	grid-column: 1;
 	grid-row: 1;
+	grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .right-panel {
 	grid-column: 3;
 	grid-row: 1;
 	overflow: auto;
+	overscroll-behavior: none;
 	border-right: 0;
 	border-left: 1px solid var(--line);
 }
@@ -502,8 +507,9 @@ button {
 
 .panel-view {
 	display: none;
-	height: calc(100vh - 116px);
+	min-height: 0;
 	overflow: auto;
+	overscroll-behavior: none;
 }
 
 .panel-view.is-active {
@@ -832,6 +838,7 @@ button {
 
 .article {
 	overflow: auto;
+	overscroll-behavior: none;
 	padding: 46px max(32px, calc((100% - var(--article-measure)) / 2)) 128px;
 	font-family: var(--article-font-family);
 	font-size: var(--article-font-size);
@@ -1162,6 +1169,60 @@ button {
 	padding: 3px 0 3px 16px;
 	border-left: 3px solid var(--accent);
 	color: var(--text-muted);
+}
+
+.mermaid-embed {
+	width: 100%;
+	margin: 0 0 22px;
+	padding: 18px;
+	overflow-x: auto;
+	border: 1px solid var(--line);
+	border-radius: 7px;
+	background: var(--surface);
+}
+
+.article .mermaid {
+	display: flex;
+	min-width: 0;
+	justify-content: center;
+	text-align: center;
+}
+
+.article .mermaid svg {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+.mermaid-embed .internal-link {
+	cursor: pointer;
+}
+
+.mermaid-embed .internal-link:hover,
+.mermaid-embed .internal-link:focus-visible {
+	filter: brightness(1.08);
+}
+
+.mermaid-embed .internal-link.is-missing {
+	cursor: not-allowed;
+	opacity: 0.62;
+}
+
+.article .mermaid.is-error {
+	display: grid;
+	justify-content: stretch;
+	gap: 4px;
+	color: var(--danger);
+	text-align: left;
+}
+
+.article .mermaid.is-error span {
+	color: var(--text-muted);
+	font-size: 13px;
+}
+
+.article .mermaid-error-source {
+	margin: 10px 0 0;
 }
 
 .article .table-embed {
@@ -2419,6 +2480,7 @@ input:focus-visible {
 
 	.workspace {
 		height: 100vh;
+		height: 100dvh;
 	}
 
 	.left-panel,

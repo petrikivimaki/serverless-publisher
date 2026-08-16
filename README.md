@@ -8,6 +8,7 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 - Public GitHub repository loading through browser `fetch()`
 - Markdown rendering with Marked
 - Syntax highlighting with PrismJS and the Prism Tomorrow theme
+- Obsidian-compatible Mermaid diagrams with light and dark themes
 - Markdown file tree with expandable folders
 - Wiki links, backlinks, and outgoing link lists
 - Full-vault search over titles, paths, tags, and body text
@@ -79,7 +80,7 @@ External links can receive configured UTM parameters by enabling `externalLinks.
 
 ## Dependencies
 
-Papyrus imports Marked, PrismJS, QRCode, and Cuelume directly from version-pinned jsDelivr URLs. Marked handles Markdown parsing, PrismJS handles syntax highlighting with the Prism Tomorrow theme, QRCode renders selected-text codes, and Cuelume synthesizes interaction sounds at runtime. The static app has no package installation or build step.
+Papyrus imports Marked, Mermaid, PrismJS, QRCode, and Cuelume directly from version-pinned jsDelivr URLs. Marked handles Markdown parsing, Mermaid renders Obsidian-compatible diagram fences, PrismJS handles syntax highlighting with the Prism Tomorrow theme, QRCode renders selected-text codes, and Cuelume synthesizes interaction sounds at runtime. The static app has no package installation or build step.
 
 MapLibre GL JS is loaded only when a note contains a map component.
 
