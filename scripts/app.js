@@ -39,7 +39,7 @@ const state = {
 	qrCodeTimer: 0,
 	searchResultIndex: -1,
 	selectedText: "",
-	scrollTopFrame: 0,
+	articleScrollFrame: 0,
 	theme: "light",
 	textAlign: "left",
 	tocState: {},
@@ -74,6 +74,8 @@ const themes = [
 const selectors = {
 	appShell: ".app-shell",
 	article: "[data-article]",
+	articleProgress: "[data-article-progress]",
+	articleProgressValue: "[data-article-progress-value]",
 	backlinkList: "[data-backlink-list]",
 	bookmarkButton: "[data-action='toggle-bookmark']",
 	bookmarkIcon: "[data-bookmark-icon]",
@@ -580,7 +582,7 @@ function bindEvents() {
 	document.addEventListener("keydown", handleDocumentKeyDown);
 	window.addEventListener("scroll", hideSelectionMenu, true);
 	window.addEventListener("resize", hideSelectionMenu);
-	window.addEventListener("resize", renderScrollTopButton);
+	window.addEventListener("resize", scheduleArticleScrollState);
 	bindTextOrientationControls();
 	bindFontFamilyControls();
 	bindThemeControls();
@@ -1556,6 +1558,7 @@ function renderHome() {
 	removeArticleCodeRunners();
 	article.classList.add("is-home");
 	article.classList.remove("has-header");
+	article.scrollTop = 0;
 	article.innerHTML = `
 		<div class="${backgroundClass}"${backgroundStyle}>
 			<div class="home-content">
@@ -1565,7 +1568,7 @@ function renderHome() {
 			</div>
 		</div>
 	`;
-	renderScrollTopButton();
+	renderArticleScrollState();
 }
 
 /**
@@ -1723,13 +1726,14 @@ function renderArticle({ note }) {
 	removeArticleCodeRunners();
 	article.classList.remove("is-home");
 	article.classList.toggle("has-header", Boolean(headerImage));
+	article.scrollTop = 0;
 	article.innerHTML = `${header}<div class="article-inner">${content}</div>`;
 	initializeArticleMermaidDiagrams();
 	initializeArticleCodeBlocks();
 	highlightArticleCode();
 	initializeArticleMaps();
 	typesetArticleMath({ markdown: note.body });
-	renderScrollTopButton();
+	renderArticleScrollState();
 }
 
 /**
@@ -3666,18 +3670,54 @@ function scrollArticleToTop() {
 }
 
 /**
- * Schedules the contextual scroll-top button update.
+ * Handles article scrolling.
  * @returns {void}
  */
 function handleArticleScroll() {
-	if (state.scrollTopFrame) {
+	scheduleArticleScrollState();
+}
+
+/**
+ * Schedules article scroll-dependent interface updates.
+ * @returns {void}
+ */
+function scheduleArticleScrollState() {
+	if (state.articleScrollFrame) {
 		return;
 	}
 
-	state.scrollTopFrame = window.requestAnimationFrame(() => {
-		state.scrollTopFrame = 0;
-		renderScrollTopButton();
+	state.articleScrollFrame = window.requestAnimationFrame(() => {
+		state.articleScrollFrame = 0;
+		renderArticleScrollState();
 	});
+}
+
+/**
+ * Renders every interface element derived from the article scroll position.
+ * @returns {void}
+ */
+function renderArticleScrollState() {
+	renderArticleProgress();
+	renderScrollTopButton();
+}
+
+/**
+ * Updates the article reading progress indicator.
+ * @returns {void}
+ */
+function renderArticleProgress() {
+	const article = select(selectors.article);
+	const progress = select(selectors.articleProgress);
+	const value = select(selectors.articleProgressValue);
+	const maximumScroll = Math.max(0, article.scrollHeight - article.clientHeight);
+	const readingProgress = maximumScroll
+		? Math.min(1, Math.max(0, article.scrollTop / maximumScroll))
+		: 1;
+	const percentage = Math.round(readingProgress * 100);
+
+	progress.hidden = state.activeView !== "note";
+	progress.setAttribute("aria-valuenow", String(percentage));
+	value.style.transform = `scaleX(${readingProgress})`;
 }
 
 /**
@@ -5324,6 +5364,8 @@ function renderShell() {
 		rightToggles[index].hidden = !state.activePath;
 		rightToggles[index].classList.toggle("is-active", !state.rightCollapsed);
 	}
+
+	scheduleArticleScrollState();
 }
 
 /**
@@ -5529,6 +5571,7 @@ function applyReaderSettings() {
 	document.documentElement.style.setProperty("--article-text-align", state.textAlign);
 	document.documentElement.style.setProperty("--article-font-family", fontFamilies[state.fontFamily]);
 	document.documentElement.style.setProperty("--article-measure", `${state.contentWidth}px`);
+	scheduleArticleScrollState();
 }
 
 /**
@@ -6128,6 +6171,7 @@ function hideNavigationStatus() {
  */
 function renderError({ error }) {
 	removeArticleCodeRunners();
+	select(selectors.articleProgress).hidden = true;
 	select(selectors.article).innerHTML = `
 		<div class="empty-state">
 			<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>

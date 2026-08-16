@@ -50,8 +50,8 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-		<link rel="stylesheet" href="styles/main.css?v=17" />
-		<script type="module" src="scripts/app.js?v=16"></script>
+		<link rel="stylesheet" href="styles/main.css?v=18" />
+		<script type="module" src="scripts/app.js?v=17"></script>
     </head>
     <body>
 		<div class="app-shell is-left-collapsed is-right-collapsed">
@@ -269,6 +269,18 @@
             </aside>
 
             <main class="workspace">
+				<div
+					class="article-progress"
+					data-article-progress
+					role="progressbar"
+					aria-label="Article reading progress"
+					aria-valuemin="0"
+					aria-valuemax="100"
+					aria-valuenow="0"
+					hidden
+				>
+					<span class="article-progress-value" data-article-progress-value></span>
+				</div>
                 <article class="article" data-article>
                     <div class="empty-state">
                         <i

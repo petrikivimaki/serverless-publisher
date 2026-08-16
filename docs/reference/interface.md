@@ -10,6 +10,8 @@ Papyrus uses a three-part reading shell: a primary menu for browsing the vault, 
 
 The shell always matches the visible browser viewport and does not scroll as a single page. The article and each side-menu content region scroll independently only when their own content exceeds the available height. Reaching an internal scroll boundary does not pass wheel movement to the shell or create a viewport bounce. The initial HTML uses the same collapsed menu state as the runtime, so config and vault loading cannot briefly reveal either side menu during the first paint or a page refresh.
 
+Open articles show a thin reading-progress line along the top of the central workspace. The line begins at the workspace's left edge and grows toward the right as the article scrolls, reaching the full workspace width at the bottom. It is scoped to the reading area, so neither side menu is covered, and it stays hidden on the standalone home screen.
+
 ## Floating navigation
 
 The floating navigation stays centered at the bottom of the window. On wide screens it shows icons and labels; on narrower screens it keeps the same actions and collapses to icons.
