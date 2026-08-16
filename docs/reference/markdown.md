@@ -42,6 +42,8 @@ Papyrus places standard Markdown tables in a responsive scroll container. Each t
 
 ## Code fences
 
+Papyrus adds language and line-count metadata plus copy, line wrapping, and collapse controls to fenced code blocks. **Wrap** soft-wraps long lines within the available reading width and changes to **Unwrap** while active. JavaScript fences also include a **Run** action. Each run starts in a hidden, script-only iframe sandbox protected by a restrictive content security policy. Calls to `console.log`, `console.info`, `console.warn`, `console.error`, and `console.debug` appear in a console directly below the code block; returned values are not printed automatically. The console header provides dedicated controls to copy its output or close the console and stop its sandbox. Running the block again replaces its previous sandbox and console.
+
 ```js
 /**
  * Greets a reader.
@@ -52,6 +54,8 @@ Papyrus places standard Markdown tables in a responsive scroll container. Each t
 function greetReader({ name }) {
 	return `Hello, ${name}.`;
 }
+
+console.log(greetReader({ name: "reader" }));
 ```
 
 ## Learn more

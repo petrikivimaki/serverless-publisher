@@ -46,12 +46,15 @@ const state = {
 
 const bookmarkStorageKey = "papyrus.bookmarks";
 const appearanceStorageKey = "papyrus.appearance";
+const codeRunnerChannel = "papyrus-code-runner";
+const codeRunnerSessions = new Map();
 const githubTreeCache = new Map();
 const minimumSelectionCharacters = 5;
 const maximumQrCodeCharacters = 100;
 const minimumScrollTopOffset = 800;
 const qrCodeVisibleMs = 18000;
 const soundEffectsVolume = 0.36;
+let codeRunnerSessionCount = 0;
 const themes = [
 	{ id: "light", label: "Light" },
 	{ id: "sand", label: "Sand" },
@@ -559,6 +562,7 @@ function bindEvents() {
 	select(selectors.tocList).addEventListener("click", handleTocClick);
 	window.addEventListener("hashchange", openRouteFromHash);
 	window.addEventListener("popstate", openRouteFromHash);
+	window.addEventListener("message", handleCodeRunnerMessage);
 	document.addEventListener("selectionchange", handleSelectionChange);
 	document.addEventListener("pointerdown", handleDocumentPointerDown);
 	document.addEventListener("click", handleDocumentClick);
@@ -1539,6 +1543,7 @@ function renderHome() {
 	const ctas = createHomeCtaMarkup();
 
 	removeArticleMaps();
+	removeArticleCodeRunners();
 	article.classList.add("is-home");
 	article.classList.remove("has-header");
 	article.innerHTML = `
@@ -1705,6 +1710,7 @@ function renderArticle({ note }) {
 		grayscale: isArticleHeaderGrayscale({ note })
 	}) : "";
 	removeArticleMaps();
+	removeArticleCodeRunners();
 	article.classList.remove("is-home");
 	article.classList.toggle("has-header", Boolean(headerImage));
 	article.innerHTML = `${header}<div class="article-inner">${content}</div>`;
@@ -1788,10 +1794,16 @@ function createCodeEmbed({ block }) {
 			action: "run-code-block",
 			icon: "fa-solid fa-play",
 			label: "Run",
-			disabled: true
+			disabled: false
 		}));
 	}
 
+	actions.append(createCodeActionButton({
+		action: "toggle-code-wrap",
+		icon: "fa-solid fa-arrow-turn-down",
+		label: "Wrap",
+		disabled: false
+	}));
 	actions.append(createCodeActionButton({
 		action: "copy-code-block",
 		icon: "fa-regular fa-copy",
@@ -1831,6 +1843,12 @@ function createCodeActionButton({ action, icon, label, disabled }) {
 
 	if (action === "toggle-code-block") {
 		button.setAttribute("aria-expanded", "true");
+	}
+
+	if (action === "toggle-code-wrap") {
+		button.setAttribute("aria-label", "Wrap lines");
+		button.setAttribute("aria-pressed", "false");
+		button.title = "Wrap lines";
 	}
 
 	button.innerHTML = `<i class="${escapeAttribute(icon)}" aria-hidden="true"></i><span>${escapeHtml(label)}</span>`;
@@ -2791,11 +2809,43 @@ function createLinkChip({ note }) {
  * @returns {void}
  */
 function handleArticleClick(event) {
+	const consoleCloseAction = event.target.closest("[data-action='close-code-console']");
+
+	if (consoleCloseAction) {
+		event.preventDefault();
+		closeCodeConsole({ button: consoleCloseAction });
+		return;
+	}
+
+	const consoleCopyAction = event.target.closest("[data-action='copy-code-console']");
+
+	if (consoleCopyAction) {
+		event.preventDefault();
+		copyCodeConsoleOutput({ button: consoleCopyAction });
+		return;
+	}
+
+	const codeRunAction = event.target.closest("[data-action='run-code-block']");
+
+	if (codeRunAction) {
+		event.preventDefault();
+		runArticleCodeBlock({ button: codeRunAction });
+		return;
+	}
+
 	const codeCopyAction = event.target.closest("[data-action='copy-code-block']");
 
 	if (codeCopyAction) {
 		event.preventDefault();
 		copyArticleCodeBlock({ button: codeCopyAction });
+		return;
+	}
+
+	const codeWrapAction = event.target.closest("[data-action='toggle-code-wrap']");
+
+	if (codeWrapAction) {
+		event.preventDefault();
+		toggleArticleCodeWrap({ button: codeWrapAction });
 		return;
 	}
 
@@ -2826,6 +2876,381 @@ function handleArticleClick(event) {
 }
 
 /**
+ * Runs an article JavaScript block in an isolated iframe sandbox.
+ * @param {object} params
+ * @param {HTMLElement} params.button
+ * @returns {void}
+ */
+function runArticleCodeBlock({ button }) {
+	const wrapper = button.closest(".code-embed");
+	const code = wrapper?.querySelector("pre code")?.textContent || "";
+
+	if (!wrapper || !code) {
+		return;
+	}
+
+	removeCodeRunner({ wrapper });
+
+	const sessionId = `code-runner-${Date.now()}-${codeRunnerSessionCount += 1}`;
+	const consoleElement = createCodeConsole();
+	const iframe = createCodeRunnerFrame();
+	const session = {
+		button,
+		consoleBody: consoleElement.querySelector(".code-console-body"),
+		consoleCopyButton: consoleElement.querySelector("[data-action='copy-code-console']"),
+		consoleElement,
+		consoleStatus: consoleElement.querySelector(".code-console-status"),
+		code,
+		iframe,
+		lineCount: 0,
+		readyTimer: 0,
+		sessionId,
+		wrapper
+	};
+
+	iframe.name = JSON.stringify({
+		channel: codeRunnerChannel,
+		action: "execute",
+		code,
+		sessionId
+	});
+	wrapper.dataset.codeRunnerSession = sessionId;
+	wrapper.append(consoleElement, iframe);
+	codeRunnerSessions.set(sessionId, session);
+	setCodeRunButtonState({ button, running: true });
+	iframe.src = new URL("code-runner.html", document.baseURI).href;
+	session.readyTimer = window.setTimeout(function handleCodeRunnerReadyTimeout() {
+		failCodeRunner({ session, message: "The JavaScript sandbox could not be started." });
+	}, 5000);
+}
+
+/**
+ * Creates the visible console for a runnable code block.
+ * @returns {HTMLElement}
+ */
+function createCodeConsole() {
+	const consoleElement = document.createElement("section");
+	const header = document.createElement("div");
+	const title = document.createElement("span");
+	const controls = document.createElement("span");
+	const status = document.createElement("span");
+	const body = document.createElement("div");
+	const copyButton = createCodeConsoleActionButton({
+		action: "copy-code-console",
+		icon: "fa-regular fa-copy",
+		label: "Copy console output",
+		disabled: true
+	});
+	const closeButton = createCodeConsoleActionButton({
+		action: "close-code-console",
+		icon: "fa-solid fa-xmark",
+		label: "Close console",
+		disabled: false
+	});
+
+	consoleElement.className = "code-console";
+	consoleElement.setAttribute("aria-label", "JavaScript console");
+	header.className = "code-console-header";
+	title.className = "code-console-title";
+	title.innerHTML = `<i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Console</span>`;
+	controls.className = "code-console-controls";
+	status.className = "code-console-status";
+	status.textContent = "Running…";
+	body.className = "code-console-body";
+	body.setAttribute("role", "log");
+	body.setAttribute("aria-live", "polite");
+	controls.append(status, copyButton, closeButton);
+	header.append(title, controls);
+	consoleElement.append(header, body);
+
+	return consoleElement;
+}
+
+/**
+ * Creates an icon action for the JavaScript console header.
+ * @param {object} params
+ * @param {string} params.action
+ * @param {string} params.icon
+ * @param {string} params.label
+ * @param {boolean} params.disabled
+ * @returns {HTMLButtonElement}
+ */
+function createCodeConsoleActionButton({ action, icon, label, disabled }) {
+	const button = document.createElement("button");
+
+	button.className = "code-console-action";
+	button.type = "button";
+	button.dataset.action = action;
+	button.disabled = disabled;
+	button.setAttribute("aria-label", label);
+	button.title = label;
+	button.innerHTML = `<i class="${escapeAttribute(icon)}" aria-hidden="true"></i>`;
+
+	return button;
+}
+
+/**
+ * Creates the hidden sandbox frame that hosts code execution.
+ * @returns {HTMLIFrameElement}
+ */
+function createCodeRunnerFrame() {
+	const iframe = document.createElement("iframe");
+
+	iframe.className = "code-runner-frame";
+	iframe.title = "JavaScript code execution sandbox";
+	iframe.tabIndex = -1;
+	iframe.setAttribute("aria-hidden", "true");
+	iframe.setAttribute("sandbox", "allow-scripts");
+
+	return iframe;
+}
+
+/**
+ * Handles messages from isolated code runner frames.
+ * @param {MessageEvent} event
+ * @returns {void}
+ */
+function handleCodeRunnerMessage(event) {
+	const data = event.data;
+
+	if (!data || data.channel !== codeRunnerChannel) {
+		return;
+	}
+
+	const session = findCodeRunnerSession({ source: event.source });
+
+	if (!session || (data.sessionId && data.sessionId !== session.sessionId)) {
+		return;
+	}
+
+	window.clearTimeout(session.readyTimer);
+
+	if (data.action === "ready") {
+		session.consoleStatus.textContent = "Running…";
+		session.iframe.contentWindow?.postMessage({
+			channel: codeRunnerChannel,
+			action: "execute",
+			code: session.code,
+			sessionId: session.sessionId
+		}, "*");
+		return;
+	}
+
+	if (data.action === "output") {
+		appendCodeConsoleLine({
+			session,
+			level: data.level,
+			values: Array.isArray(data.values) ? data.values : []
+		});
+		return;
+	}
+
+	if (data.action === "complete") {
+		completeCodeRunner({ session });
+		return;
+	}
+
+	if (data.action === "failed") {
+		failCodeRunner({ session, message: data.message || "JavaScript execution failed." });
+	}
+}
+
+/**
+ * Finds a code runner session by its message source.
+ * @param {object} params
+ * @param {MessageEventSource|null} params.source
+ * @returns {object|null}
+ */
+function findCodeRunnerSession({ source }) {
+	const sessions = Array.from(codeRunnerSessions.values());
+
+	for (let index = 0; index < sessions.length; index += 1) {
+		if (sessions[index].iframe.contentWindow === source) {
+			return sessions[index];
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Appends one captured console call to the visible console.
+ * @param {object} params
+ * @param {object} params.session
+ * @param {string} params.level
+ * @param {Array<string>} params.values
+ * @returns {void}
+ */
+function appendCodeConsoleLine({ session, level, values }) {
+	const allowedLevels = ["debug", "error", "info", "log", "warn"];
+	const normalizedLevel = allowedLevels.includes(level) ? level : "log";
+	const line = document.createElement("div");
+	const label = document.createElement("span");
+	const message = document.createElement("span");
+
+	line.className = `code-console-line is-${normalizedLevel}`;
+	label.className = "code-console-level";
+	label.textContent = normalizedLevel;
+	message.className = "code-console-message";
+	message.textContent = values.join(" ");
+	line.append(label, message);
+	session.consoleBody.append(line);
+	session.consoleCopyButton.disabled = false;
+	session.lineCount += 1;
+}
+
+/**
+ * Marks a code runner session as complete.
+ * @param {object} params
+ * @param {object} params.session
+ * @returns {void}
+ */
+function completeCodeRunner({ session }) {
+	session.consoleStatus.textContent = "Completed";
+	setCodeRunButtonState({ button: session.button, running: false });
+
+	if (!session.lineCount) {
+		appendCodeConsoleLine({
+			session,
+			level: "log",
+			values: ["No console output."]
+		});
+		session.consoleBody.lastElementChild?.classList.add("is-empty");
+	}
+}
+
+/**
+ * Shows a runner failure in its attached console.
+ * @param {object} params
+ * @param {object} params.session
+ * @param {string} params.message
+ * @returns {void}
+ */
+function failCodeRunner({ session, message }) {
+	window.clearTimeout(session.readyTimer);
+	session.consoleStatus.textContent = "Failed";
+	setCodeRunButtonState({ button: session.button, running: false });
+	appendCodeConsoleLine({ session, level: "error", values: [message] });
+}
+
+/**
+ * Updates a code block run button for execution state.
+ * @param {object} params
+ * @param {HTMLElement} params.button
+ * @param {boolean} params.running
+ * @returns {void}
+ */
+function setCodeRunButtonState({ button, running }) {
+	const icon = button.querySelector("i");
+	const label = button.querySelector("span");
+	const buttonLabel = running ? "Restart" : "Run";
+
+	button.classList.toggle("is-running", running);
+	button.setAttribute("aria-label", buttonLabel);
+	button.title = buttonLabel;
+
+	if (icon) {
+		icon.className = running ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-play";
+	}
+
+	if (label) {
+		label.textContent = buttonLabel;
+	}
+}
+
+/**
+ * Removes a code runner session from one code block.
+ * @param {object} params
+ * @param {HTMLElement} params.wrapper
+ * @returns {void}
+ */
+function removeCodeRunner({ wrapper }) {
+	const sessionId = wrapper.dataset.codeRunnerSession;
+	const session = codeRunnerSessions.get(sessionId);
+
+	if (!session) {
+		return;
+	}
+
+	window.clearTimeout(session.readyTimer);
+	session.consoleElement.remove();
+	session.iframe.remove();
+	codeRunnerSessions.delete(sessionId);
+	delete wrapper.dataset.codeRunnerSession;
+}
+
+/**
+ * Removes every active article code runner.
+ * @returns {void}
+ */
+function removeArticleCodeRunners() {
+	const sessions = Array.from(codeRunnerSessions.values());
+
+	for (let index = 0; index < sessions.length; index += 1) {
+		removeCodeRunner({ wrapper: sessions[index].wrapper });
+	}
+}
+
+/**
+ * Closes a code block console and stops its sandbox.
+ * @param {object} params
+ * @param {HTMLElement} params.button
+ * @returns {void}
+ */
+function closeCodeConsole({ button }) {
+	const wrapper = button.closest(".code-embed");
+
+	if (!wrapper) {
+		return;
+	}
+
+	removeCodeRunner({ wrapper });
+	const runButton = wrapper.querySelector("[data-action='run-code-block']");
+
+	if (runButton) {
+		setCodeRunButtonState({ button: runButton, running: false });
+	}
+}
+
+/**
+ * Copies the captured output from one code block console.
+ * @param {object} params
+ * @param {HTMLElement} params.button
+ * @returns {Promise<void>}
+ */
+async function copyCodeConsoleOutput({ button }) {
+	const consoleElement = button.closest(".code-console");
+	const text = consoleElement ? getCodeConsoleText({ consoleElement }) : "";
+	const copied = text ? await copyText({
+		text,
+		successMessage: "Console output copied."
+	}) : false;
+
+	if (copied) {
+		showCopyButtonCopiedState({ button });
+	}
+}
+
+/**
+ * Gets plain text from a rendered code console.
+ * @param {object} params
+ * @param {HTMLElement} params.consoleElement
+ * @returns {string}
+ */
+function getCodeConsoleText({ consoleElement }) {
+	const lines = consoleElement.querySelectorAll(".code-console-line");
+	const output = [];
+
+	for (let index = 0; index < lines.length; index += 1) {
+		const level = lines[index].querySelector(".code-console-level")?.textContent || "log";
+		const message = lines[index].querySelector(".code-console-message")?.textContent || "";
+		output.push(`[${level}] ${message}`);
+	}
+
+	return output.join("\n");
+}
+
+/**
  * Copies article code block content.
  * @param {object} params
  * @param {HTMLElement} params.button
@@ -2842,6 +3267,34 @@ async function copyArticleCodeBlock({ button }) {
 
 	if (copied) {
 		showCopyButtonCopiedState({ button });
+	}
+}
+
+/**
+ * Toggles soft wrapping for one article code block.
+ * @param {object} params
+ * @param {HTMLElement} params.button
+ * @returns {void}
+ */
+function toggleArticleCodeWrap({ button }) {
+	const wrapper = button.closest(".code-embed");
+	const label = button.querySelector("span");
+
+	if (!wrapper) {
+		return;
+	}
+
+	const wrapped = !wrapper.classList.contains("is-wrapped");
+	const accessibleLabel = wrapped ? "Disable line wrapping" : "Wrap lines";
+
+	wrapper.classList.toggle("is-wrapped", wrapped);
+	button.classList.toggle("is-active", wrapped);
+	button.setAttribute("aria-label", accessibleLabel);
+	button.setAttribute("aria-pressed", String(wrapped));
+	button.title = accessibleLabel;
+
+	if (label) {
+		label.textContent = wrapped ? "Unwrap" : "Wrap";
 	}
 }
 
@@ -5008,6 +5461,7 @@ function hideToast() {
  * @returns {void}
  */
 function renderError({ error }) {
+	removeArticleCodeRunners();
 	select(selectors.article).innerHTML = `
 		<div class="empty-state">
 			<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
