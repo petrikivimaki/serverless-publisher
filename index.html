@@ -50,8 +50,8 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-		<link rel="stylesheet" href="styles/main.css?v=18" />
-		<script type="module" src="scripts/app.js?v=17"></script>
+		<link rel="stylesheet" href="styles/main.css?v=22" />
+		<script type="module" src="scripts/app.js?v=18"></script>
     </head>
     <body>
 		<div class="app-shell is-left-collapsed is-right-collapsed">
@@ -468,6 +468,29 @@
 				hidden
 			>
 				<div class="settings-row">
+					<span>Timer</span>
+					<div class="settings-options timer-options" aria-label="Focus timer">
+						<button
+							type="button"
+							data-action="cycle-focus-timer"
+							data-timer-duration
+							aria-label="Timer duration: 5 minutes"
+							title="Change timer duration"
+						>
+							5 min
+						</button>
+						<button
+							type="button"
+							data-action="start-focus-timer"
+							aria-label="Start 5 minute timer"
+							title="Start timer"
+						>
+							<i class="fa-solid fa-play" aria-hidden="true"></i>
+							<span>Start</span>
+						</button>
+					</div>
+				</div>
+				<div class="settings-row">
 					<span>Theme</span>
 					<div class="settings-options theme-options" aria-label="Theme">
 						<button type="button" data-theme-choice="light" aria-label="Light theme" title="Light theme">
@@ -551,8 +574,18 @@
 			</section>
 
 			<div class="navigation-status" data-navigation-status role="status" aria-live="polite" aria-atomic="true">
-				<i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+				<i class="fa-solid fa-circle-info" data-navigation-status-icon aria-hidden="true"></i>
 				<span data-navigation-status-message></span>
+				<button
+					type="button"
+					class="navigation-status-close"
+					data-action="close-focus-timer"
+					aria-label="Close timer"
+					title="Close timer"
+					hidden
+				>
+					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				</button>
 			</div>
 
 			<nav class="floating-navigation" aria-label="Main navigation">

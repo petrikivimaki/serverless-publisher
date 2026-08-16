@@ -2295,7 +2295,11 @@ button {
 	transition-delay: 0s;
 }
 
-.navigation-status i {
+.navigation-status.is-timer {
+	pointer-events: auto;
+}
+
+.navigation-status > i {
 	flex: 0 0 auto;
 	width: 14px;
 	color: var(--accent);
@@ -2303,10 +2307,34 @@ button {
 }
 
 .navigation-status span {
+	flex: 1 1 auto;
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.navigation-status-close {
+	display: grid;
+	flex: 0 0 auto;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	margin: 0 -6px 0 auto;
+	padding: 0;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--text-muted);
+}
+
+.navigation-status-close:hover {
+	background: var(--surface-muted);
+	color: var(--text);
+}
+
+.navigation-status-close[hidden] {
+	display: none;
 }
 
 .floating-navigation {
@@ -2426,6 +2454,30 @@ button {
 
 .settings-options.sound-options {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-options.timer-options {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 6px;
+	padding: 0;
+	background: transparent;
+}
+
+.settings-options.timer-options button {
+	border: 3px solid var(--surface-muted);
+	border-radius: 9px;
+	background: var(--surface-muted);
+}
+
+.timer-options button:last-child {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+}
+
+.settings-options.timer-options button:hover {
+	border-color: var(--surface-muted);
 }
 
 .settings-options button,

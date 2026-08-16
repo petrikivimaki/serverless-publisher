@@ -16,7 +16,7 @@ Open articles show a thin reading-progress line along the top of the central wor
 
 The floating navigation stays centered at the bottom of the window. On wide screens it shows icons and labels; on narrower screens it keeps the same actions and collapses to icons.
 
-Temporary event feedback, including vault load counts, copy confirmations, bookmark changes, and errors, appears in a full-length status row attached to the top of the floating navigation. The row is consistently narrower than the navigation regardless of message length. It slides out from behind the navigation, remains visible briefly, and then retracts into it; readers who prefer reduced motion receive the same updates without the transition.
+Temporary event feedback, including vault load counts, copy confirmations, bookmark changes, and errors, appears in a full-length status row attached to the top of the floating navigation. The row is consistently narrower than the navigation regardless of message length. It slides out from behind the navigation, remains visible briefly, and then retracts into it; readers who prefer reduced motion receive the same updates without the transition. A running focus timer uses this same row persistently. Temporary feedback can replace the countdown briefly, then the timer returns without losing time.
 
 - **Home** returns to the dedicated front page.
 - **Library** opens or closes the primary menu on the file tree.
@@ -33,7 +33,9 @@ Library, Search, and Details use active emphasis only while their corresponding 
 
 ## Quick settings
 
-Quick settings collect every content experience control in one place: theme, sound, typeface, alignment, text size, leading, and reading measure. The icon-only sound control turns all Cuelume interaction cues on or off. The dependency-free typeface choices preserve the intent of Papyrus Pro with common web-safe fonts: **Literary** uses Georgia, **Modern** uses Arial, and **Monospace** uses Courier New. Changes apply immediately and are saved in browser storage. A saved reader preference takes precedence over the configured default on that browser.
+Quick settings collect every content experience control in one place: focus timer, theme, sound, typeface, alignment, text size, leading, and reading measure. The timer begins at 5 minutes; its duration button cycles through 5, 10, 15, and 20 minutes, while the adjacent start control begins or restarts the countdown. The countdown remains active while navigating between the home screen and articles. It clears after completion, reports that it finished, and includes a close control for ending it early.
+
+The icon-only sound control turns all Cuelume interaction cues on or off. The dependency-free typeface choices preserve the intent of Papyrus Pro with common web-safe fonts: **Literary** uses Georgia, **Modern** uses Arial, and **Monospace** uses Courier New. Appearance changes apply immediately and are saved in browser storage. A saved reader preference takes precedence over the configured default on that browser; the focus timer is session-only.
 
 Site owners set the defaults under `appearance` in `config/app-config.json`, including `soundEnabled`. See [[workflow/setup]] for the rest of the runtime configuration workflow.
 

@@ -30,6 +30,9 @@ const state = {
 	fontSize: 18,
 	lineHeight: 1.68,
 	leftCollapsed: true,
+	focusTimerDurationMinutes: 5,
+	focusTimerEndsAt: 0,
+	focusTimerInterval: 0,
 	mathJaxPromise: null,
 	mapLibrePromise: null,
 	maps: [],
@@ -43,6 +46,7 @@ const state = {
 	theme: "light",
 	textAlign: "left",
 	tocState: {},
+	navigationNoticeVisible: false,
 	navigationStatusTimer: 0
 };
 
@@ -56,6 +60,7 @@ const maximumQrCodeCharacters = 100;
 const minimumScrollTopOffset = 800;
 const qrCodeVisibleMs = 18000;
 const soundEffectsVolume = 0.36;
+const focusTimerDurations = [5, 10, 15, 20];
 const mapPropertyNames = ["latitude", "longitude", "zoom", "marker", "grayscale", "label"];
 const tickerPropertyNames = ["symbol", "label", "quote", "market", "change"];
 const swotPropertyNames = ["strengths", "weaknesses", "opportunities", "threats"];
@@ -92,6 +97,7 @@ const selectors = {
 	leftPanel: "[data-left-panel]",
 	lineHeightInput: "[data-line-height]",
 	lineHeightValue: "[data-line-height-value]",
+	focusTimerDuration: "[data-timer-duration]",
 	contentWidthInput: "[data-content-width]",
 	contentWidthValue: "[data-content-width-value]",
 	linktreeList: "[data-linktree-list]",
@@ -118,6 +124,8 @@ const selectors = {
 	themeToggle: "[data-theme-toggle]",
 	tocList: "[data-toc-list]",
 	navigationStatus: "[data-navigation-status]",
+	navigationStatusClose: "[data-action='close-focus-timer']",
+	navigationStatusIcon: "[data-navigation-status-icon]",
 	navigationStatusMessage: "[data-navigation-status-message]",
 	vaultNoteCount: "[data-vault-note-count]",
 	vaultSource: "[data-vault-source]",
@@ -170,6 +178,7 @@ async function loadVault() {
 		renderReaderControls();
 		renderSoundControls();
 		renderThemeToggle();
+		renderFocusTimerControls();
 		document.title = state.config.title || "Papyrus";
 		select(selectors.vaultTitle).textContent = state.config.title || "Papyrus";
 		state.files = await loadFiles({ config: state.config });
@@ -548,6 +557,9 @@ function bindEvents() {
 	select("[data-action='close-left']").addEventListener("click", closeLeftPanel);
 	select("[data-action='scroll-top']").addEventListener("click", scrollArticleToTop);
 	select("[data-action='toggle-settings']").addEventListener("click", toggleQuickSettings);
+	select("[data-action='cycle-focus-timer']").addEventListener("click", cycleFocusTimerDuration);
+	select("[data-action='start-focus-timer']").addEventListener("click", startFocusTimer);
+	select(selectors.navigationStatusClose).addEventListener("click", closeFocusTimer);
 	select("[data-action='refresh']").addEventListener("click", loadVault);
 	select("[data-action='open-all-folders']").addEventListener("click", openAllFolders);
 	select("[data-action='close-all-folders']").addEventListener("click", closeAllFolders);
@@ -5351,6 +5363,142 @@ function renderQuickSettings() {
 }
 
 /**
+ * Advances to the next supported focus timer duration.
+ * @returns {void}
+ */
+function cycleFocusTimerDuration() {
+	const currentIndex = focusTimerDurations.indexOf(state.focusTimerDurationMinutes);
+	const nextIndex = (currentIndex + 1) % focusTimerDurations.length;
+	state.focusTimerDurationMinutes = focusTimerDurations[nextIndex];
+	renderFocusTimerControls();
+	playCuelume("tick");
+}
+
+/**
+ * Renders the selected focus timer duration and start control labels.
+ * @returns {void}
+ */
+function renderFocusTimerControls() {
+	const duration = state.focusTimerDurationMinutes;
+	const durationButton = select(selectors.focusTimerDuration);
+	const startButton = select("[data-action='start-focus-timer']");
+	durationButton.textContent = `${duration} min`;
+	durationButton.setAttribute("aria-label", `Timer duration: ${duration} minutes`);
+	startButton.setAttribute("aria-label", `Start ${duration} minute timer`);
+	startButton.title = state.focusTimerEndsAt ? "Restart timer" : "Start timer";
+}
+
+/**
+ * Starts or restarts the selected focus timer.
+ * @returns {void}
+ */
+function startFocusTimer() {
+	window.clearInterval(state.focusTimerInterval);
+	window.clearTimeout(state.navigationStatusTimer);
+	state.focusTimerEndsAt = Date.now() + state.focusTimerDurationMinutes * 60 * 1000;
+	state.navigationNoticeVisible = false;
+	state.focusTimerInterval = window.setInterval(updateFocusTimer, 1000);
+	closeQuickSettings();
+	renderFocusTimerControls();
+	renderFocusTimerStatus();
+	playCuelume("ready");
+}
+
+/**
+ * Updates the active timer or completes it when no time remains.
+ * @returns {void}
+ */
+function updateFocusTimer() {
+	if (!state.focusTimerEndsAt) {
+		return;
+	}
+
+	const remainingSeconds = getFocusTimerRemainingSeconds();
+
+	if (remainingSeconds <= 0) {
+		completeFocusTimer();
+		return;
+	}
+
+	if (!state.navigationNoticeVisible) {
+		renderFocusTimerStatus();
+	}
+}
+
+/**
+ * Gets the number of whole seconds remaining in the active timer.
+ * @returns {number}
+ */
+function getFocusTimerRemainingSeconds() {
+	return Math.max(0, Math.ceil((state.focusTimerEndsAt - Date.now()) / 1000));
+}
+
+/**
+ * Formats seconds as a compact minute and second countdown.
+ * @param {number} totalSeconds
+ * @returns {string}
+ */
+function formatFocusTimerTime(totalSeconds) {
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+/**
+ * Renders the active timer in the shared navigation status row.
+ * @returns {void}
+ */
+function renderFocusTimerStatus() {
+	const status = select(selectors.navigationStatus);
+	const icon = select(selectors.navigationStatusIcon);
+	const closeButton = select(selectors.navigationStatusClose);
+	const remainingSeconds = getFocusTimerRemainingSeconds();
+	icon.className = "fa-regular fa-clock";
+	select(selectors.navigationStatusMessage).textContent = `Timer · ${formatFocusTimerTime(remainingSeconds)}`;
+	closeButton.hidden = false;
+	status.setAttribute("aria-live", "off");
+	status.classList.add("is-visible", "is-timer");
+}
+
+/**
+ * Completes the timer and briefly reports that it finished.
+ * @returns {void}
+ */
+function completeFocusTimer() {
+	stopFocusTimer();
+	renderFocusTimerControls();
+	playCuelume("ready");
+	showNavigationStatus({ message: "Timer complete." });
+}
+
+/**
+ * Closes an active focus timer before it finishes.
+ * @returns {void}
+ */
+function closeFocusTimer() {
+	if (!state.focusTimerEndsAt) {
+		return;
+	}
+
+	stopFocusTimer();
+	window.clearTimeout(state.navigationStatusTimer);
+	state.navigationNoticeVisible = false;
+	renderFocusTimerControls();
+	hideNavigationStatus();
+	playCuelume("droplet");
+}
+
+/**
+ * Stops the timer interval and clears its deadline.
+ * @returns {void}
+ */
+function stopFocusTimer() {
+	window.clearInterval(state.focusTimerInterval);
+	state.focusTimerInterval = 0;
+	state.focusTimerEndsAt = 0;
+}
+
+/**
  * Renders shell layout state.
  * @returns {void}
  */
@@ -6149,10 +6297,32 @@ function getVaultSourceLabel({ config }) {
  */
 function showNavigationStatus({ message }) {
 	const status = select(selectors.navigationStatus);
+	const icon = select(selectors.navigationStatusIcon);
+	const closeButton = select(selectors.navigationStatusClose);
+	state.navigationNoticeVisible = true;
+	icon.className = "fa-solid fa-circle-info";
 	select(selectors.navigationStatusMessage).textContent = message;
+	closeButton.hidden = true;
+	status.setAttribute("aria-live", "polite");
+	status.classList.remove("is-timer");
 	status.classList.add("is-visible");
 	window.clearTimeout(state.navigationStatusTimer);
-	state.navigationStatusTimer = window.setTimeout(hideNavigationStatus, 2600);
+	state.navigationStatusTimer = window.setTimeout(finishNavigationNotice, 2600);
+}
+
+/**
+ * Ends a temporary notice and restores the timer when one is active.
+ * @returns {void}
+ */
+function finishNavigationNotice() {
+	state.navigationNoticeVisible = false;
+
+	if (state.focusTimerEndsAt) {
+		renderFocusTimerStatus();
+		return;
+	}
+
+	hideNavigationStatus();
 }
 
 /**
@@ -6160,7 +6330,9 @@ function showNavigationStatus({ message }) {
  * @returns {void}
  */
 function hideNavigationStatus() {
-	select(selectors.navigationStatus).classList.remove("is-visible");
+	const status = select(selectors.navigationStatus);
+	select(selectors.navigationStatusClose).hidden = true;
+	status.classList.remove("is-visible", "is-timer");
 }
 
 /**
