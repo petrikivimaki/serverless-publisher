@@ -1285,44 +1285,82 @@ button {
 	background: var(--surface-muted);
 }
 
-.map-header {
+.map-footer {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 12px;
-	padding: 9px 10px;
-	border-bottom: 1px solid var(--line);
+	flex-wrap: wrap;
+	gap: 10px 16px;
+	min-height: 62px;
+	padding: 10px 12px;
+	border-top: 1px solid var(--line);
 	background: var(--surface);
 	color: var(--text-muted);
 	font-size: 12px;
+}
+
+.map-details {
+	display: grid;
+	flex: 1 1 170px;
+	gap: 2px;
+	min-width: 0;
+	line-height: 1.35;
+}
+
+.map-label {
+	overflow: hidden;
+	color: var(--text);
+	font-size: 13px;
 	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.map-data {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
 }
 
 .map-coordinate-label {
-	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.map-header-actions {
+.map-data-separator {
+	color: var(--line-strong);
+}
+
+.map-footer-actions {
 	display: inline-flex;
 	align-items: center;
 	flex-shrink: 0;
 	gap: 12px;
+	margin-left: auto;
 }
 
-.map-header a {
+.map-footer a,
+.map-footer button {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
+	padding: 4px 0;
+	border: 0;
+	background: transparent;
 	color: var(--text);
+	font-family: inherit;
 	font-size: 12px;
+	font-weight: 700;
 	text-decoration: none;
+	cursor: pointer;
 }
 
-.map-header a:hover {
+.map-footer a:hover,
+.map-footer button:hover {
 	color: var(--accent);
+	text-decoration: none;
 }
 
 .map-canvas {
@@ -1332,7 +1370,6 @@ button {
 	background: var(--surface-muted);
 }
 
-.map-canvas.is-grayscale canvas,
 .map-canvas.is-grayscale .maplibregl-canvas {
 	filter: grayscale(1);
 }

@@ -27,6 +27,13 @@ Keep your writing as plain text, keep your publishing site as static files, and 
 
 ## Example map
 
-Papyrus supports inline maps through a small project-specific directive:
+Papyrus turns a `map` code fence into an interactive component. See [[reference/extensions/obsidian-and-papyrus|the map component contract]] for every property.
 
-map:[60.1699,24.9384,11]
+```map
+latitude: 60.1699
+longitude: 24.9384
+zoom: 11
+marker: true
+grayscale: true
+label: Helsinki
+```

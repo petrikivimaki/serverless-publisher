@@ -2031,6 +2031,8 @@ function initializeArticleMap({ element }) {
 	const latitude = Number(element.dataset.lat);
 	const longitude = Number(element.dataset.lon);
 	const zoom = Number(element.dataset.zoom);
+	const marker = element.dataset.marker === "true";
+	const label = element.dataset.label || "";
 
 	if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(zoom)) {
 		element.textContent = "Invalid map coordinates.";
@@ -2052,7 +2054,8 @@ function initializeArticleMap({ element }) {
 			});
 
 			map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-			bindArticleMapHeader({ element, map });
+			addArticleMapMarker({ maplibregl, map, latitude, longitude, marker, label });
+			bindArticleMapFooter({ element, map });
 			state.maps.push(map);
 		})
 		.catch(() => {
@@ -2061,41 +2064,71 @@ function initializeArticleMap({ element }) {
 }
 
 /**
- * Binds header controls for a MapLibre map.
+ * Adds an optional marker at a map's configured coordinates.
+ * @param {object} params
+ * @param {object} params.maplibregl
+ * @param {object} params.map
+ * @param {number} params.latitude
+ * @param {number} params.longitude
+ * @param {boolean} params.marker
+ * @param {string} params.label
+ * @returns {void}
+ */
+function addArticleMapMarker({ maplibregl, map, latitude, longitude, marker, label }) {
+	if (!marker) {
+		return;
+	}
+
+	const mapMarker = new maplibregl.Marker()
+		.setLngLat([longitude, latitude])
+		.addTo(map);
+	const markerElement = mapMarker.getElement();
+
+	if (label) {
+		markerElement.setAttribute("aria-label", label);
+		markerElement.title = label;
+	}
+}
+
+/**
+ * Binds footer data and controls for a MapLibre map.
  * @param {object} params
  * @param {HTMLElement} params.element
  * @param {object} params.map
  * @returns {void}
  */
-function bindArticleMapHeader({ element, map }) {
+function bindArticleMapFooter({ element, map }) {
 	const mapEmbed = element.closest(".map-embed");
 	const coordinateLabel = mapEmbed?.querySelector("[data-map-coordinates]");
+	const zoomLabel = mapEmbed?.querySelector("[data-map-zoom]");
 	const googleMapsLink = mapEmbed?.querySelector("[data-map-google]");
 
-	if (!mapEmbed || !coordinateLabel || !googleMapsLink) {
+	if (!mapEmbed || !coordinateLabel || !zoomLabel || !googleMapsLink) {
 		return;
 	}
 
-	updateArticleMapHeader({ map, coordinateLabel, googleMapsLink });
+	updateArticleMapFooter({ map, coordinateLabel, zoomLabel, googleMapsLink });
 	map.on("move", function handleMapMove() {
-		updateArticleMapHeader({ map, coordinateLabel, googleMapsLink });
+		updateArticleMapFooter({ map, coordinateLabel, zoomLabel, googleMapsLink });
 	});
 }
 
 /**
- * Updates map coordinates and external map link.
+ * Updates map coordinates, zoom, and external map link.
  * @param {object} params
  * @param {object} params.map
  * @param {Element} params.coordinateLabel
+ * @param {Element} params.zoomLabel
  * @param {HTMLAnchorElement} params.googleMapsLink
  * @returns {void}
  */
-function updateArticleMapHeader({ map, coordinateLabel, googleMapsLink }) {
+function updateArticleMapFooter({ map, coordinateLabel, zoomLabel, googleMapsLink }) {
 	const center = map.getCenter();
 	const latitude = center.lat;
 	const longitude = center.lng;
 
 	coordinateLabel.textContent = formatCoordinates({ latitude, longitude });
+	zoomLabel.textContent = formatMapZoom(map.getZoom());
 	googleMapsLink.href = getGoogleMapsUrl({
 		latitude: latitude.toFixed(6),
 		longitude: longitude.toFixed(6)
@@ -3676,12 +3709,12 @@ function hideSelectionMenu() {
  * @returns {string}
  */
 function renderMarkdown({ markdown }) {
-	const html = marked.parse(replaceMapSyntax({ markdown: replaceWikiLinks({ markdown }) }));
+	const html = marked.parse(replaceWikiLinks({ markdown: replaceMapSyntax({ markdown }) }));
 	return resolveRenderedLinks({ html });
 }
 
 /**
- * Replaces map syntax before Markdown parsing.
+ * Replaces fenced map components before Markdown parsing.
  * @param {object} params
  * @param {string} params.markdown
  * @returns {string}
@@ -3691,24 +3724,128 @@ function replaceMapSyntax({ markdown }) {
 		return markdown;
 	}
 
-	return markdown.replace(/^map:\[\s*([^\],]*)\s*,?\s*([^\],]*)?\s*,?\s*([^\]]*)?\s*\]\s*$/gm, createMapPlaceholder);
+	const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+	const output = [];
+
+	for (let index = 0; index < lines.length; index += 1) {
+		const opening = getFenceOpening(lines[index]);
+
+		if (!opening) {
+			output.push(lines[index]);
+			continue;
+		}
+
+		const closingIndex = findClosingFenceIndex({
+			lines,
+			startIndex: index + 1,
+			marker: opening.marker,
+			minimumLength: opening.length
+		});
+
+		if (closingIndex < 0) {
+			output.push(lines.slice(index).join("\n"));
+			break;
+		}
+
+		if (opening.info === "map") {
+			output.push(createMapPlaceholder({ source: lines.slice(index + 1, closingIndex).join("\n") }));
+		} else {
+			output.push(lines.slice(index, closingIndex + 1).join("\n"));
+		}
+
+		index = closingIndex;
+	}
+
+	return output.join("\n");
+}
+
+/**
+ * Gets opening-fence metadata from a Markdown line.
+ * @param {string} line
+ * @returns {object|null}
+ */
+function getFenceOpening(line) {
+	const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+
+	if (!match) {
+		return null;
+	}
+
+	return {
+		marker: match[1][0],
+		length: match[1].length,
+		info: match[2].trim()
+	};
+}
+
+/**
+ * Finds a matching closing Markdown fence.
+ * @param {object} params
+ * @param {Array<string>} params.lines
+ * @param {number} params.startIndex
+ * @param {string} params.marker
+ * @param {number} params.minimumLength
+ * @returns {number}
+ */
+function findClosingFenceIndex({ lines, startIndex, marker, minimumLength }) {
+	for (let index = startIndex; index < lines.length; index += 1) {
+		const match = lines[index].match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+
+		if (match && match[1][0] === marker && match[1].length >= minimumLength) {
+			return index;
+		}
+	}
+
+	return -1;
 }
 
 /**
  * Creates map placeholder markup.
- * @param {string} match
- * @param {string} latitude
- * @param {string} longitude
- * @param {string} zoom
+ * @param {object} params
+ * @param {string} params.source
  * @returns {string}
  */
-function createMapPlaceholder(match, latitude, longitude, zoom) {
-	const map = getMapValues({ latitude, longitude, zoom });
-	const className = state.config.maps?.grayscale ? "map-canvas is-grayscale" : "map-canvas";
+function createMapPlaceholder({ source }) {
+	const properties = parseMapProperties({ source });
+	const map = getMapValues(properties);
+	const className = map.grayscale === "true" ? "map-canvas is-grayscale" : "map-canvas";
 	const googleMapsUrl = getGoogleMapsUrl({ latitude: map.latitude, longitude: map.longitude });
 	const coordinateLabel = formatCoordinates({ latitude: map.latitude, longitude: map.longitude });
+	const labelMarkup = map.label
+		? `<strong class="map-label">${escapeHtml(map.label)}</strong>`
+		: "";
+	const accessibleLabel = map.label || `Map at ${coordinateLabel}`;
 
-	return `<figure class="map-embed"><figcaption class="map-header"><span class="map-coordinate-label" data-map-coordinates>${escapeHtml(coordinateLabel)}</span><span class="map-header-actions"><a href="${escapeAttribute(googleMapsUrl)}" target="_blank" rel="noreferrer" data-map-google><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>Google Maps</span></a><a href="#" data-map-fullscreen><i class="fa-solid fa-expand" aria-hidden="true"></i><span data-map-fullscreen-label>Fullscreen</span></a></span></figcaption><div class="${className}" data-map data-lat="${escapeAttribute(map.latitude)}" data-lon="${escapeAttribute(map.longitude)}" data-zoom="${escapeAttribute(map.zoom)}"></div></figure>`;
+	return `<figure class="map-embed"><div class="${className}" data-map data-lat="${escapeAttribute(map.latitude)}" data-lon="${escapeAttribute(map.longitude)}" data-zoom="${escapeAttribute(map.zoom)}" data-marker="${escapeAttribute(map.marker)}" data-grayscale="${escapeAttribute(map.grayscale)}" data-label="${escapeAttribute(map.label)}" aria-label="${escapeAttribute(accessibleLabel)}"></div><figcaption class="map-footer"><span class="map-details">${labelMarkup}<span class="map-data"><span class="map-coordinate-label" data-map-coordinates>${escapeHtml(coordinateLabel)}</span><span class="map-data-separator" aria-hidden="true">&middot;</span><span data-map-zoom>${escapeHtml(formatMapZoom(map.zoom))}</span></span></span><span class="map-footer-actions"><a href="${escapeAttribute(googleMapsUrl)}" target="_blank" rel="noreferrer" data-map-google><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>Google Maps</span></a><button type="button" data-map-fullscreen><i class="fa-solid fa-expand" aria-hidden="true"></i><span data-map-fullscreen-label>Fullscreen</span></button></span></figcaption></figure>`;
+}
+
+/**
+ * Parses one-property-per-line map component source.
+ * @param {object} params
+ * @param {string} params.source
+ * @returns {object}
+ */
+function parseMapProperties({ source }) {
+	const properties = {};
+	const lines = source.replace(/\r\n/g, "\n").split("\n");
+
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index].trim();
+		const separatorIndex = line.indexOf(":");
+
+		if (separatorIndex <= 0) {
+			continue;
+		}
+
+		const key = line.slice(0, separatorIndex).trim().toLowerCase();
+		const value = line.slice(separatorIndex + 1).trim();
+
+		if (["latitude", "longitude", "zoom", "marker", "grayscale", "label"].includes(key)) {
+			properties[key] = value;
+		}
+	}
+
+	return properties;
 }
 
 /**
@@ -3727,6 +3864,21 @@ function formatCoordinates({ latitude, longitude }) {
 	}
 
 	return `${lat.toFixed(3)}°, ${lon.toFixed(3)}°`;
+}
+
+/**
+ * Formats a MapLibre zoom value for display.
+ * @param {number|string} zoom
+ * @returns {string}
+ */
+function formatMapZoom(zoom) {
+	const value = Number(zoom);
+
+	if (!Number.isFinite(value)) {
+		return "Zoom 0";
+	}
+
+	return `Zoom ${Number(value.toFixed(1))}`;
 }
 
 /**
@@ -3755,16 +3907,62 @@ function getGoogleMapsUrl({ latitude, longitude }) {
  * @param {string} params.latitude
  * @param {string} params.longitude
  * @param {string} params.zoom
+ * @param {string} params.marker
+ * @param {string} params.grayscale
+ * @param {string} params.label
  * @returns {object}
  */
-function getMapValues({ latitude, longitude, zoom }) {
+function getMapValues({ latitude, longitude, zoom, marker, grayscale, label }) {
 	const fallback = getMapFallback();
 
 	return {
-		latitude: String(getFiniteNumber({ value: latitude, fallback: fallback.latitude })),
-		longitude: String(getFiniteNumber({ value: longitude, fallback: fallback.longitude })),
-		zoom: String(getFiniteNumber({ value: zoom, fallback: fallback.zoom }))
+		latitude: String(getNumberInRange({ value: latitude, fallback: fallback.latitude, minimum: -90, maximum: 90 })),
+		longitude: String(getNumberInRange({ value: longitude, fallback: fallback.longitude, minimum: -180, maximum: 180 })),
+		zoom: String(getNumberInRange({ value: zoom, fallback: fallback.zoom, minimum: 0, maximum: 22 })),
+		marker: String(getBoolean({ value: marker, fallback: false })),
+		grayscale: String(getBoolean({ value: grayscale, fallback: Boolean(state.config.maps?.grayscale) })),
+		label: String(label || "").trim()
 	};
+}
+
+/**
+ * Gets an in-range number or fallback.
+ * @param {object} params
+ * @param {number|string} params.value
+ * @param {number} params.fallback
+ * @param {number} params.minimum
+ * @param {number} params.maximum
+ * @returns {number}
+ */
+function getNumberInRange({ value, fallback, minimum, maximum }) {
+	const number = getFiniteNumber({ value, fallback });
+
+	return number >= minimum && number <= maximum ? number : fallback;
+}
+
+/**
+ * Gets a boolean from a boolean-like value or fallback.
+ * @param {object} params
+ * @param {boolean|string} params.value
+ * @param {boolean} params.fallback
+ * @returns {boolean}
+ */
+function getBoolean({ value, fallback }) {
+	if (typeof value === "boolean") {
+		return value;
+	}
+
+	const normalized = String(value || "").trim().toLowerCase();
+
+	if (normalized === "true") {
+		return true;
+	}
+
+	if (normalized === "false") {
+		return false;
+	}
+
+	return fallback;
 }
 
 /**

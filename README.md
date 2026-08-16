@@ -15,7 +15,7 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 - Runtime-generated Cuelume interaction sounds with a saved on/off control
 - Calendar panel with configurable first day of week
 - Configurable home screen and startup animation
-- Inline MapLibre maps with `map:[lat,lon,zoom]`
+- Fenced MapLibre map components with configurable markers and labels
 - GitHub Pages friendly deployment
 
 ## Quick Start
@@ -78,7 +78,7 @@ External links can receive configured UTM parameters by enabling `externalLinks.
 
 Papyrus imports Marked, PrismJS, QRCode, and Cuelume directly from version-pinned jsDelivr URLs. Marked handles Markdown parsing, PrismJS handles syntax highlighting with the Prism Tomorrow theme, QRCode renders selected-text codes, and Cuelume synthesizes interaction sounds at runtime. The static app has no package installation or build step.
 
-MapLibre GL JS is loaded only when a note contains a map directive.
+MapLibre GL JS is loaded only when a note contains a map component.
 
 ## Content
 
@@ -95,14 +95,20 @@ tags: publishing, markdown
 Link to [[another-note]] or [[folder/note|a labeled note]].
 ```
 
-Inline maps use a single-line map directive:
+Maps use a fenced Markdown component with one property per line:
 
-```md
-map:[60.1699,24.9384,11]
+````md
+```map
+latitude: 60.1699
+longitude: 24.9384
+zoom: 11
+marker: true
+grayscale: true
+label: Helsinki
 ```
+````
 
-The values are latitude, longitude, and zoom.
-Map support, fallback coordinates, and grayscale rendering are configured under `maps` in `config/app-config.json`.
+Map support, fallback coordinates, and the default grayscale value are configured under `maps` in `config/app-config.json`. Individual map fences can override that default.
 
 ## Deployment
 
