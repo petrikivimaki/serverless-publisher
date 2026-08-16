@@ -8,11 +8,13 @@ tags: papyrus, interface, appearance
 
 Papyrus uses a three-part reading shell: a primary menu for browsing the vault, a central reading workspace, and a secondary menu for the active note's context. Both side menus are optional, so the article can use the entire window when they are closed.
 
-The shell always matches the visible browser viewport and does not scroll as a single page. The article and each side-menu content region scroll independently only when their own content exceeds the available height. Reaching an internal scroll boundary does not pass wheel movement to the shell or create a viewport bounce.
+The shell always matches the visible browser viewport and does not scroll as a single page. The article and each side-menu content region scroll independently only when their own content exceeds the available height. Reaching an internal scroll boundary does not pass wheel movement to the shell or create a viewport bounce. The initial HTML uses the same collapsed menu state as the runtime, so config and vault loading cannot briefly reveal either side menu during the first paint or a page refresh.
 
 ## Floating navigation
 
 The floating navigation stays centered at the bottom of the window. On wide screens it shows icons and labels; on narrower screens it keeps the same actions and collapses to icons.
+
+Temporary event feedback, including vault load counts, copy confirmations, bookmark changes, and errors, appears in a full-length status row attached to the top of the floating navigation. The row is consistently narrower than the navigation regardless of message length. It slides out from behind the navigation, remains visible briefly, and then retracts into it; readers who prefer reduced motion receive the same updates without the transition.
 
 - **Home** returns to the dedicated front page.
 - **Library** opens or closes the primary menu on the file tree.

@@ -54,7 +54,7 @@
 		<script type="module" src="scripts/app.js?v=16"></script>
     </head>
     <body>
-		<div class="app-shell">
+		<div class="app-shell is-left-collapsed is-right-collapsed">
 			<aside class="left-panel" data-left-panel>
 				<header class="panel-header">
 					<div>
@@ -538,6 +538,11 @@
 				</label>
 			</section>
 
+			<div class="navigation-status" data-navigation-status role="status" aria-live="polite" aria-atomic="true">
+				<i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+				<span data-navigation-status-message></span>
+			</div>
+
 			<nav class="floating-navigation" aria-label="Main navigation">
 				<button type="button" data-action="open-home" data-cuelume-hover="tick" data-cuelume-toggle="page" aria-label="Home" title="Home">
 					<i class="fa-solid fa-house" aria-hidden="true"></i>
@@ -601,8 +606,6 @@
                 </button>
             </div>
         </div>
-
-        <div class="toast" data-toast role="status" aria-live="polite"></div>
         <div class="page-load-mask" data-page-load-mask aria-hidden="true">
             <img class="page-load-logo" src="" alt="" data-page-load-logo />
         </div>

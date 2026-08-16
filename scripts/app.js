@@ -43,7 +43,7 @@ const state = {
 	theme: "light",
 	textAlign: "left",
 	tocState: {},
-	toastTimer: 0
+	navigationStatusTimer: 0
 };
 
 const bookmarkStorageKey = "papyrus.bookmarks";
@@ -115,7 +115,8 @@ const selectors = {
 	textOrientation: "[data-text-orientation]",
 	themeToggle: "[data-theme-toggle]",
 	tocList: "[data-toc-list]",
-	toast: "[data-toast]",
+	navigationStatus: "[data-navigation-status]",
+	navigationStatusMessage: "[data-navigation-status-message]",
 	vaultNoteCount: "[data-vault-note-count]",
 	vaultSource: "[data-vault-source]",
 	vaultTitle: "[data-vault-title]"
@@ -174,8 +175,8 @@ async function loadVault() {
 		select(selectors.vaultSource).textContent = getVaultSourceLabel({ config: state.config });
 		renderAll();
 		openRouteFromHash();
-		showToast({ message: `Loaded ${state.notes.length} notes.` });
 		await finishPageLoadAnimation({ loadAnimation });
+		showNavigationStatus({ message: `Loaded ${state.notes.length} notes` });
 	} catch (error) {
 		await finishPageLoadAnimation({ loadAnimation });
 		renderError({ error });
@@ -1522,7 +1523,7 @@ function openNote({ path, updateHash = true }) {
 	const note = findNoteByPath({ path });
 
 	if (!note) {
-		showToast({ message: `Missing note: ${path}` });
+		showNavigationStatus({ message: `Missing note: ${path}` });
 		return;
 	}
 
@@ -2121,7 +2122,7 @@ async function typesetArticleMath({ markdown }) {
 			await mathJax.typesetPromise([article]);
 		}
 	} catch (error) {
-		showToast({ message: "Math rendering could not be loaded." });
+		showNavigationStatus({ message: "Math rendering could not be loaded." });
 	}
 }
 
@@ -5740,10 +5741,10 @@ function toggleActiveBookmark() {
 
 	if (isBookmarked({ path: state.activePath })) {
 		removeBookmark({ path: state.activePath });
-		showToast({ message: "Bookmark removed." });
+		showNavigationStatus({ message: "Bookmark removed." });
 	} else {
 		addBookmark({ path: state.activePath });
-		showToast({ message: "Bookmark added." });
+		showNavigationStatus({ message: "Bookmark added." });
 	}
 
 	refreshBookmarkUi();
@@ -5790,14 +5791,14 @@ function removeBookmark({ path }) {
  */
 function clearBookmarks() {
 	if (!state.bookmarks.length) {
-		showToast({ message: "No bookmarks to remove." });
+		showNavigationStatus({ message: "No bookmarks to remove." });
 		return;
 	}
 
 	state.bookmarks = [];
 	saveBookmarks();
 	refreshBookmarkUi();
-	showToast({ message: "All bookmarks removed." });
+	showNavigationStatus({ message: "All bookmarks removed." });
 }
 
 /**
@@ -5840,7 +5841,7 @@ async function copyActiveSourceUrl() {
 	const url = getGithubArticleUrl({ path: state.activePath });
 
 	if (!url) {
-		showToast({ message: "Article source URL is unavailable." });
+		showNavigationStatus({ message: "Article source URL is unavailable." });
 		return;
 	}
 
@@ -5858,7 +5859,7 @@ async function copyActivePublishedUrl() {
 	const url = getPublishedArticleUrl({ path: state.activePath });
 
 	if (!url) {
-		showToast({ message: "Article site URL is unavailable." });
+		showNavigationStatus({ message: "Article site URL is unavailable." });
 		return;
 	}
 
@@ -5876,7 +5877,7 @@ async function copyActiveArticleContent() {
 	const note = findNoteByPath({ path: state.activePath });
 
 	if (!note) {
-		showToast({ message: "No article selected." });
+		showNavigationStatus({ message: "No article selected." });
 		return;
 	}
 
@@ -5894,7 +5895,7 @@ async function copySelectedText() {
 	const text = state.selectedText;
 
 	if (!text) {
-		showToast({ message: "No text selected." });
+		showNavigationStatus({ message: "No text selected." });
 		return;
 	}
 
@@ -5913,12 +5914,12 @@ async function createQrCodeFromSelection() {
 	const text = state.selectedText;
 
 	if (!text) {
-		showToast({ message: "No text selected." });
+		showNavigationStatus({ message: "No text selected." });
 		return;
 	}
 
 	if (countCharacters(text) > maximumQrCodeCharacters) {
-		showToast({ message: "Selection is too long for a QR code." });
+		showNavigationStatus({ message: "Selection is too long for a QR code." });
 		return;
 	}
 
@@ -5932,7 +5933,7 @@ async function createQrCodeFromSelection() {
 		showQrCodeBlock({ dataUrl, text });
 		hideSelectionMenu();
 	} catch (error) {
-		showToast({ message: "Could not create QR code." });
+		showNavigationStatus({ message: "Could not create QR code." });
 	}
 }
 
@@ -6003,7 +6004,7 @@ function searchSelectedText({ baseUrl }) {
 	const text = state.selectedText;
 
 	if (!text) {
-		showToast({ message: "No text selected." });
+		showNavigationStatus({ message: "No text selected." });
 		return;
 	}
 
@@ -6019,7 +6020,7 @@ function openActiveArticleInObsidian() {
 	const url = getObsidianArticleUrl({ path: state.activePath });
 
 	if (!url) {
-		showToast({ message: "Obsidian link is unavailable." });
+		showNavigationStatus({ message: "Obsidian link is unavailable." });
 		return;
 	}
 
@@ -6041,14 +6042,14 @@ async function copyText({ text, successMessage }) {
 			throw new Error("Clipboard unavailable.");
 		}
 
-		showToast({ message: successMessage });
+		showNavigationStatus({ message: successMessage });
 		return true;
 	} catch (error) {
 		if (copyTextWithBuffer(text)) {
-			showToast({ message: successMessage });
+			showNavigationStatus({ message: successMessage });
 			return true;
 		} else {
-			showToast({ message: "Could not copy to clipboard." });
+			showNavigationStatus({ message: "Could not copy to clipboard." });
 			return false;
 		}
 	}
@@ -6080,7 +6081,7 @@ function copyTextWithBuffer(text) {
  * @returns {void}
  */
 function showStorageWarning() {
-	showToast({ message: "Browser settings could not be saved." });
+	showNavigationStatus({ message: "Browser settings could not be saved." });
 }
 
 /**
@@ -6098,25 +6099,25 @@ function getVaultSourceLabel({ config }) {
 }
 
 /**
- * Shows a toast message.
+ * Shows a temporary status row attached to the floating navigation.
  * @param {object} params
  * @param {string} params.message
  * @returns {void}
  */
-function showToast({ message }) {
-	const toast = select(selectors.toast);
-	toast.textContent = message;
-	toast.classList.add("is-visible");
-	window.clearTimeout(state.toastTimer);
-	state.toastTimer = window.setTimeout(hideToast, 2600);
+function showNavigationStatus({ message }) {
+	const status = select(selectors.navigationStatus);
+	select(selectors.navigationStatusMessage).textContent = message;
+	status.classList.add("is-visible");
+	window.clearTimeout(state.navigationStatusTimer);
+	state.navigationStatusTimer = window.setTimeout(hideNavigationStatus, 2600);
 }
 
 /**
- * Hides the toast message.
+ * Hides the floating navigation status row.
  * @returns {void}
  */
-function hideToast() {
-	select(selectors.toast).classList.remove("is-visible");
+function hideNavigationStatus() {
+	select(selectors.navigationStatus).classList.remove("is-visible");
 }
 
 /**
@@ -6134,7 +6135,7 @@ function renderError({ error }) {
 			<p>${escapeHtml(error.message)}</p>
 		</div>
 	`;
-	showToast({ message: error.message });
+	showNavigationStatus({ message: error.message });
 }
 
 await init();

@@ -2107,30 +2107,6 @@ button {
 	font-size: 13px;
 }
 
-.toast {
-	position: fixed;
-	right: 18px;
-	bottom: 82px;
-	z-index: 10;
-	max-width: 360px;
-	padding: 10px 12px;
-	border: 1px solid var(--line-strong);
-	border-radius: 7px;
-	background: var(--surface);
-	box-shadow: var(--shadow);
-	color: var(--text);
-	font-size: 14px;
-	opacity: 0;
-	transform: translateY(10px);
-	transition: opacity 160ms ease, transform 160ms ease;
-	pointer-events: none;
-}
-
-.toast.is-visible {
-	opacity: 1;
-	transform: translateY(0);
-}
-
 .selection-menu {
 	position: fixed;
 	z-index: 30;
@@ -2257,7 +2233,63 @@ button {
 	transform: translateX(-50%);
 }
 
+.navigation-status {
+	position: absolute;
+	bottom: calc(100% - 1px);
+	left: 50%;
+	z-index: 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: calc(100% - 34px);
+	height: 36px;
+	padding: 0 13px;
+	border: 1px solid var(--line-strong);
+	border-bottom: 0;
+	border-radius: 12px 12px 0 0;
+	background: rgb(253,253,250,0.97);
+	box-shadow: 0 -8px 22px rgb(35,38,33,0.08);
+	color: var(--text-muted);
+	font-size: 12px;
+	opacity: 0;
+	visibility: hidden;
+	transform: translate(-50%, calc(100% - 1px));
+	transition:
+		opacity 150ms ease,
+		transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+		visibility 0s linear 220ms;
+	pointer-events: none;
+}
+
+:root[data-theme="dark"] .navigation-status,
+:root[data-theme="ocean"] .navigation-status {
+	background: rgb(31,32,36,0.97);
+}
+
+.navigation-status.is-visible {
+	opacity: 1;
+	visibility: visible;
+	transform: translate(-50%, 0);
+	transition-delay: 0s;
+}
+
+.navigation-status i {
+	flex: 0 0 auto;
+	width: 14px;
+	color: var(--accent);
+	text-align: center;
+}
+
+.navigation-status span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .floating-navigation {
+	position: relative;
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	gap: 2px;
@@ -2449,6 +2481,10 @@ input:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+	.navigation-status {
+		transition: none;
+	}
+
 	.panel-tabs::before {
 		transition: opacity 120ms ease;
 	}
@@ -2590,12 +2626,6 @@ input:focus-visible {
 		transform: translateX(-50%);
 	}
 
-	.toast {
-		right: 12px;
-		bottom: 76px;
-		left: 12px;
-		max-width: none;
-	}
 }
 
 @media (max-width: 480px) {
