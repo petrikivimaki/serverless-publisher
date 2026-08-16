@@ -50,8 +50,8 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-		<link rel="stylesheet" href="styles/main.css?v=11" />
-		<script type="module" src="scripts/app.js?v=11"></script>
+		<link rel="stylesheet" href="styles/main.css?v=16" />
+		<script type="module" src="scripts/app.js?v=16"></script>
     </head>
     <body>
 		<div class="app-shell">
@@ -113,15 +113,33 @@
                     data-view="files"
                     aria-label="Files"
                 >
-                    <div class="panel-toolbar">
-                        <label class="field">
-                            <span>Filter files</span>
-                            <input
-                                type="search"
-                                data-file-filter
-                                placeholder="Type to filter"
-                            />
-                        </label>
+                    <div class="vault-toolbar">
+                        <h2>Vault</h2>
+                        <div class="vault-toolbar-actions">
+                            <span class="vault-note-count" data-vault-note-count></span>
+                            <button
+                                class="icon-button"
+                                type="button"
+                                data-action="open-all-folders"
+                                data-cuelume-hover="tick"
+                                data-cuelume-toggle="toggle"
+                                aria-label="Open all folders"
+                                title="Open all folders"
+                            >
+                                <i class="fa-solid fa-angles-down" aria-hidden="true"></i>
+                            </button>
+                            <button
+                                class="icon-button"
+                                type="button"
+                                data-action="close-all-folders"
+                                data-cuelume-hover="tick"
+                                data-cuelume-toggle="toggle"
+                                aria-label="Close all folders"
+                                title="Close all folders"
+                            >
+                                <i class="fa-solid fa-angles-up" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </div>
                     <nav
                         class="file-tree"
@@ -137,15 +155,25 @@
                 >
                     <div class="panel-toolbar">
                         <label class="field">
-                            <span>Search vault</span>
                             <input
                                 type="search"
                                 data-search-input
-                                placeholder="Words, tags, links"
+                                placeholder="Search everything..."
+                                aria-label="Search vault"
+                                role="combobox"
+                                aria-autocomplete="list"
+                                aria-controls="vault-search-results"
+                                aria-expanded="false"
                             />
                         </label>
                     </div>
-                    <div class="search-results" data-search-results></div>
+                    <div
+                        class="search-results"
+                        id="vault-search-results"
+                        data-search-results
+                        role="listbox"
+                        aria-label="Search results"
+                    ></div>
                 </section>
 
                 <section

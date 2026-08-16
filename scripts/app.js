@@ -35,6 +35,7 @@ const state = {
 	settingsOpen: false,
 	soundEnabled: true,
 	qrCodeTimer: 0,
+	searchResultIndex: -1,
 	selectedText: "",
 	scrollTopFrame: 0,
 	theme: "light",
@@ -69,7 +70,6 @@ const selectors = {
 	calendarDays: "[data-calendar-days]",
 	calendarTitle: "[data-calendar-title]",
 	calendarWeekdays: "[data-calendar-weekdays]",
-	fileFilter: "[data-file-filter]",
 	fileTree: "[data-file-tree]",
 	fontFamily: "[data-font-family]",
 	fontSizeInput: "[data-font-size]",
@@ -104,6 +104,7 @@ const selectors = {
 	themeToggle: "[data-theme-toggle]",
 	tocList: "[data-toc-list]",
 	toast: "[data-toast]",
+	vaultNoteCount: "[data-vault-note-count]",
 	vaultSource: "[data-vault-source]",
 	vaultTitle: "[data-vault-title]"
 };
@@ -533,6 +534,8 @@ function bindEvents() {
 	select("[data-action='scroll-top']").addEventListener("click", scrollArticleToTop);
 	select("[data-action='toggle-settings']").addEventListener("click", toggleQuickSettings);
 	select("[data-action='refresh']").addEventListener("click", loadVault);
+	select("[data-action='open-all-folders']").addEventListener("click", openAllFolders);
+	select("[data-action='close-all-folders']").addEventListener("click", closeAllFolders);
 	select("[data-action='previous-month']").addEventListener("click", showPreviousMonth);
 	select("[data-action='next-month']").addEventListener("click", showNextMonth);
 	select("[data-action='current-month']").addEventListener("click", showCurrentMonth);
@@ -546,8 +549,8 @@ function bindEvents() {
 	select("[data-action='qr-selection']").addEventListener("click", createQrCodeFromSelection);
 	select("[data-action='search-selection-google']").addEventListener("click", searchSelectedTextWithGoogle);
 	select("[data-action='search-selection-brave']").addEventListener("click", searchSelectedTextWithBrave);
-	select(selectors.fileFilter).addEventListener("input", renderFileTree);
-	select(selectors.searchInput).addEventListener("input", renderSearch);
+	select(selectors.searchInput).addEventListener("input", handleSearchInput);
+	select(selectors.searchInput).addEventListener("keydown", handleSearchKeyDown);
 	select(selectors.article).addEventListener("click", handleArticleClick);
 	select(selectors.article).addEventListener("scroll", handleArticleScroll, { passive: true });
 	select(selectors.fontSizeInput).addEventListener("input", handleFontSizeInput);
@@ -705,6 +708,10 @@ function setPanel({ panel }) {
 	state.leftCollapsed = false;
 	renderPanels();
 	renderShell();
+
+	if (panel === "search") {
+		select(selectors.searchInput).focus();
+	}
 }
 
 /**
@@ -722,11 +729,12 @@ function closeLeftPanel() {
  * @returns {void}
  */
 function renderFileTree() {
-	const filter = select(selectors.fileFilter).value.trim().toLowerCase();
-	const filteredNotes = filter ? filterNotesByText({ notes: state.notes, query: filter }) : state.notes;
-	const tree = createTree({ notes: filteredNotes });
+	const tree = createTree({ notes: state.notes });
 	const container = select(selectors.fileTree);
-	container.replaceChildren(renderTreeNode({ node: tree, depth: 0, path: "", forceExpanded: Boolean(filter) }));
+	const count = state.notes.length;
+
+	select(selectors.vaultNoteCount).textContent = `${formatNumber(count)} ${count === 1 ? "note" : "notes"}`;
+	container.replaceChildren(renderTreeNode({ node: tree, depth: 0, path: "" }));
 }
 
 /**
@@ -754,17 +762,16 @@ function filterNotesByText({ notes, query }) {
  * @param {object} params.node
  * @param {number} params.depth
  * @param {string} params.path
- * @param {boolean} params.forceExpanded
  * @returns {DocumentFragment|HTMLElement}
  */
-function renderTreeNode({ node, depth, path, forceExpanded }) {
+function renderTreeNode({ node, depth, path }) {
 	const fragment = document.createDocumentFragment();
 	const folderNames = Object.keys(node.children).sort();
 
 	for (let index = 0; index < folderNames.length; index += 1) {
 		const folderName = folderNames[index];
 		const folderPath = path ? `${path}/${folderName}` : folderName;
-		const expanded = forceExpanded || isFolderExpanded({ path: folderPath });
+		const expanded = isFolderExpanded({ path: folderPath });
 		const group = document.createElement("div");
 		const button = document.createElement("button");
 		const children = document.createElement("div");
@@ -786,8 +793,7 @@ function renderTreeNode({ node, depth, path, forceExpanded }) {
 		children.append(renderTreeNode({
 			node: node.children[folderName],
 			depth: depth + 1,
-			path: folderPath,
-			forceExpanded
+			path: folderPath
 		}));
 		group.append(button, children);
 		fragment.append(group);
@@ -817,6 +823,29 @@ function handleFolderButtonClick(event) {
  */
 function toggleFolder({ path }) {
 	state.folderState[path] = !isFolderExpanded({ path });
+	renderFileTree();
+}
+
+/**
+ * Opens every folder in the file tree.
+ * @returns {void}
+ */
+function openAllFolders() {
+	const folderButtons = selectAll(".tree-folder");
+
+	for (let index = 0; index < folderButtons.length; index += 1) {
+		state.folderState[folderButtons[index].dataset.path] = true;
+	}
+
+	renderFileTree();
+}
+
+/**
+ * Closes every folder in the file tree.
+ * @returns {void}
+ */
+function closeAllFolders() {
+	state.folderState = {};
 	renderFileTree();
 }
 
@@ -1025,24 +1054,92 @@ function createTree({ notes }) {
  * @returns {void}
  */
 function renderSearch() {
-	const query = select(selectors.searchInput).value.trim().toLowerCase();
+	const input = select(selectors.searchInput);
+	const query = input.value.trim().toLowerCase();
 	const container = select(selectors.searchResults);
 	const results = query ? filterNotesByText({ notes: state.notes, query }).slice(0, 40) : [];
+	const hasResults = results.length > 0;
+
+	input.setAttribute("aria-expanded", String(hasResults));
 
 	if (!query) {
-		container.innerHTML = `<p class="muted">Search titles, paths, tags, and note text.</p>`;
+		state.searchResultIndex = -1;
+		input.removeAttribute("aria-activedescendant");
+		container.innerHTML = `<p class="search-message">Search titles, paths, tags, and note text.</p>`;
 		return;
 	}
 
 	if (!results.length) {
-		container.innerHTML = `<p class="muted">No matching notes.</p>`;
+		state.searchResultIndex = -1;
+		input.removeAttribute("aria-activedescendant");
+		container.innerHTML = `<p class="search-message">No matching notes.</p>`;
 		return;
 	}
 
+	state.searchResultIndex = Math.min(Math.max(state.searchResultIndex, 0), results.length - 1);
 	container.replaceChildren();
 
 	for (let index = 0; index < results.length; index += 1) {
-		container.append(createResultButton({ note: results[index], query }));
+		container.append(createResultButton({ note: results[index], query, index }));
+	}
+
+	renderSearchResultSelection();
+}
+
+/**
+ * Resets selection when the search query changes.
+ * @returns {void}
+ */
+function handleSearchInput() {
+	state.searchResultIndex = 0;
+	renderSearch();
+}
+
+/**
+ * Handles search-result navigation without moving focus from the query input.
+ * @param {KeyboardEvent} event
+ * @returns {void}
+ */
+function handleSearchKeyDown(event) {
+	const buttons = selectAll(".result-button");
+
+	if (!buttons.length) {
+		return;
+	}
+
+	if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+		const direction = event.key === "ArrowDown" ? 1 : -1;
+		event.preventDefault();
+		state.searchResultIndex = (state.searchResultIndex + direction + buttons.length) % buttons.length;
+		renderSearchResultSelection();
+		buttons[state.searchResultIndex].scrollIntoView({ block: "nearest" });
+		return;
+	}
+
+	if (event.key === "Enter" && state.searchResultIndex >= 0) {
+		event.preventDefault();
+		openNote({ path: buttons[state.searchResultIndex].dataset.path });
+	}
+}
+
+/**
+ * Updates the visible and accessible active search result.
+ * @returns {void}
+ */
+function renderSearchResultSelection() {
+	const input = select(selectors.searchInput);
+	const buttons = selectAll(".result-button");
+
+	for (let index = 0; index < buttons.length; index += 1) {
+		const isSelected = index === state.searchResultIndex;
+		buttons[index].classList.toggle("is-selected", isSelected);
+		buttons[index].setAttribute("aria-selected", String(isSelected));
+	}
+
+	if (buttons[state.searchResultIndex]) {
+		input.setAttribute("aria-activedescendant", buttons[state.searchResultIndex].id);
+	} else {
+		input.removeAttribute("aria-activedescendant");
 	}
 }
 
@@ -1203,12 +1300,15 @@ function showCurrentMonth() {
  * @param {object} params
  * @param {object} params.note
  * @param {string} params.query
+ * @param {number} params.index
  * @returns {HTMLButtonElement}
  */
-function createResultButton({ note, query }) {
+function createResultButton({ note, query, index }) {
 	const button = document.createElement("button");
 	button.className = "result-button";
 	button.type = "button";
+	button.id = `vault-search-result-${index}`;
+	button.setAttribute("role", "option");
 	button.innerHTML = `
 		<span class="result-title">${escapeHtml(note.title)}</span>
 		<span class="result-path">${escapeHtml(note.path)}</span>
@@ -1216,8 +1316,18 @@ function createResultButton({ note, query }) {
 	`;
 	button.dataset.path = note.path;
 	addNavigationSound({ element: button, cue: "page" });
-	button.addEventListener("click", handleNoteButtonClick);
+	button.addEventListener("click", handleSearchResultButtonClick);
 	return button;
+}
+
+/**
+ * Opens a search result and restores focus to the query input.
+ * @param {MouseEvent} event
+ * @returns {void}
+ */
+function handleSearchResultButtonClick(event) {
+	openNote({ path: event.currentTarget.dataset.path });
+	select(selectors.searchInput).focus();
 }
 
 /**

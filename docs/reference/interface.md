@@ -19,7 +19,9 @@ The floating navigation stays centered at the bottom of the window. On wide scre
 - **Details** opens or closes the secondary menu for the current note.
 - **Settings** opens the compact appearance popover anchored above the navigation.
 
-The primary menu's tab strip also exposes Calendar, Bookmarks, Graph, and Links without requiring a permanent tool rail.
+The primary menu's tab strip also exposes Calendar, Bookmarks, Graph, and Links without requiring a permanent tool rail. Its shared active indicator slides between view buttons, while reduced-motion preferences keep the state change immediate. The Library view keeps the vault tree focused on browsing: its **Vault** row reports the note count and provides icon controls to open or close every folder, without duplicating the full-vault search field.
+
+The Search view uses a single **Search everything...** field to match titles, paths, tags, and note text. Before a query is entered, the search scope appears in the same soft card treatment used for the selected result. The first result is selected as the query changes; **Up Arrow** and **Down Arrow** move that selection, and **Enter** opens it while keyboard focus remains in the search field.
 
 Library, Search, and Details use active emphasis only while their corresponding side menu is open. Closing a menu from either the floating navigation or the menu's own close button removes that emphasis. Home is a navigation action rather than a toggle, so it uses hover and focus feedback but never keeps an active highlight.
 
