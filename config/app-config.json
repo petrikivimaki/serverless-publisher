@@ -64,6 +64,10 @@
     },
     "grayscale": false
   },
+  "periodicTable": {
+    "linkLabel": "PubChem",
+    "linkTemplate": "https://pubchem.ncbi.nlm.nih.gov/element/{Z}"
+  },
   "reading": {
     "wordsPerMinute": 225
   },

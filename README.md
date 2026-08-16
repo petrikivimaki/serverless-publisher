@@ -16,6 +16,9 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 - Calendar panel with configurable first day of week
 - Configurable home screen and startup animation
 - Fenced MapLibre map components with configurable markers and labels
+- Fenced market ticker cards with signed price-change styling and Google search links
+- Fenced periodic tables with selected-element highlighting and configurable reference links
+- Fenced four-quadrant SWOT analysis cards
 - GitHub Pages friendly deployment
 
 ## Quick Start
@@ -109,6 +112,42 @@ label: Helsinki
 ````
 
 Map support, fallback coordinates, and the default grayscale value are configured under `maps` in `config/app-config.json`. Individual map fences can override that default.
+
+Ticker cards use the same one-property-per-line fenced component contract:
+
+````md
+```ticker
+symbol: NOKIA
+label: Nokia Oyj
+market: Nasdaq Helsinki
+quote: 4.67 EUR
+change: +0.73%
+```
+````
+
+Ticker values are display-only content. The card links to a Google search for `stock ticker {symbol}`; changes beginning with `+` or `↑` use positive styling, while changes beginning with `-`, `−`, or `↓` use negative styling.
+
+Periodic tables use the `pte` fence and accept a label plus a comma- or space-separated list of symbols:
+
+````md
+```pte
+label: Elements in caffeine
+elements: H, C, N, O
+```
+````
+
+Every element links to the reference service configured under `periodicTable`. Its `linkTemplate` can contain `{Z}`, `{symbol}`, or both; Papyrus substitutes the element's atomic number and standard symbol before rendering the URL.
+
+SWOT analyses use four plain-text properties and always render a complete quadrant grid:
+
+````md
+```swot
+strengths: Strong customer retention and a focused product.
+weaknesses: A small team with limited distribution.
+opportunities: Growing demand in adjacent markets.
+threats: Larger competitors entering the category.
+```
+````
 
 ## Deployment
 

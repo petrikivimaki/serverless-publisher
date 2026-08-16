@@ -9,6 +9,7 @@ import {
 } from "https://cdn.jsdelivr.net/npm/cuelume@0.2.2/+esm";
 import "https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-json.min.js";
 import "https://cdn.jsdelivr.net/npm/prismjs@1.30.0/plugins/autoloader/prism-autoloader.min.js";
+import { getPeriodicTableElementUrl, periodicTableElements } from "./periodic-table.js";
 
 Prism.manual = true;
 Prism.plugins.autoloader.languages_path = "https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/";
@@ -54,6 +55,13 @@ const maximumQrCodeCharacters = 100;
 const minimumScrollTopOffset = 800;
 const qrCodeVisibleMs = 18000;
 const soundEffectsVolume = 0.36;
+const mapPropertyNames = ["latitude", "longitude", "zoom", "marker", "grayscale", "label"];
+const tickerPropertyNames = ["symbol", "label", "quote", "market", "change"];
+const swotPropertyNames = ["strengths", "weaknesses", "opportunities", "threats"];
+const ptePropertyNames = ["label", "elements"];
+const defaultPeriodicTableLinkTemplate = "https://pubchem.ncbi.nlm.nih.gov/element/{Z}";
+const defaultPeriodicTableLinkLabel = "PubChem";
+const periodicTableElementLookup = createPeriodicTableElementLookup();
 let codeRunnerSessionCount = 0;
 const themes = [
 	{ id: "light", label: "Light" },
@@ -3709,21 +3717,17 @@ function hideSelectionMenu() {
  * @returns {string}
  */
 function renderMarkdown({ markdown }) {
-	const html = marked.parse(replaceWikiLinks({ markdown: replaceMapSyntax({ markdown }) }));
+	const html = marked.parse(replaceWikiLinks({ markdown: replaceComponentSyntax({ markdown }) }));
 	return resolveRenderedLinks({ html });
 }
 
 /**
- * Replaces fenced map components before Markdown parsing.
+ * Replaces supported fenced components before Markdown parsing.
  * @param {object} params
  * @param {string} params.markdown
  * @returns {string}
  */
-function replaceMapSyntax({ markdown }) {
-	if (!state.config.maps?.enabled) {
-		return markdown;
-	}
-
+function replaceComponentSyntax({ markdown }) {
 	const lines = markdown.replace(/\r\n/g, "\n").split("\n");
 	const output = [];
 
@@ -3747,8 +3751,11 @@ function replaceMapSyntax({ markdown }) {
 			break;
 		}
 
-		if (opening.info === "map") {
-			output.push(createMapPlaceholder({ source: lines.slice(index + 1, closingIndex).join("\n") }));
+		const source = lines.slice(index + 1, closingIndex).join("\n");
+		const placeholder = createComponentPlaceholder({ type: opening.info, source });
+
+		if (placeholder) {
+			output.push(placeholder);
 		} else {
 			output.push(lines.slice(index, closingIndex + 1).join("\n"));
 		}
@@ -3757,6 +3764,33 @@ function replaceMapSyntax({ markdown }) {
 	}
 
 	return output.join("\n");
+}
+
+/**
+ * Creates markup for one supported fenced component.
+ * @param {object} params
+ * @param {string} params.type
+ * @param {string} params.source
+ * @returns {string}
+ */
+function createComponentPlaceholder({ type, source }) {
+	if (type === "map" && state.config.maps?.enabled) {
+		return createMapPlaceholder({ source });
+	}
+
+	if (type === "ticker") {
+		return createTickerPlaceholder({ source });
+	}
+
+	if (type === "swot") {
+		return createSwotPlaceholder({ source });
+	}
+
+	if (type === "pte") {
+		return createPtePlaceholder({ source });
+	}
+
+	return "";
 }
 
 /**
@@ -3806,7 +3840,7 @@ function findClosingFenceIndex({ lines, startIndex, marker, minimumLength }) {
  * @returns {string}
  */
 function createMapPlaceholder({ source }) {
-	const properties = parseMapProperties({ source });
+	const properties = parseComponentProperties({ source, allowedKeys: mapPropertyNames });
 	const map = getMapValues(properties);
 	const className = map.grayscale === "true" ? "map-canvas is-grayscale" : "map-canvas";
 	const googleMapsUrl = getGoogleMapsUrl({ latitude: map.latitude, longitude: map.longitude });
@@ -3820,12 +3854,13 @@ function createMapPlaceholder({ source }) {
 }
 
 /**
- * Parses one-property-per-line map component source.
+ * Parses allowed one-property-per-line component source values.
  * @param {object} params
  * @param {string} params.source
+ * @param {Array<string>} params.allowedKeys
  * @returns {object}
  */
-function parseMapProperties({ source }) {
+function parseComponentProperties({ source, allowedKeys }) {
 	const properties = {};
 	const lines = source.replace(/\r\n/g, "\n").split("\n");
 
@@ -3840,12 +3875,234 @@ function parseMapProperties({ source }) {
 		const key = line.slice(0, separatorIndex).trim().toLowerCase();
 		const value = line.slice(separatorIndex + 1).trim();
 
-		if (["latitude", "longitude", "zoom", "marker", "grayscale", "label"].includes(key)) {
+		if (allowedKeys.includes(key)) {
 			properties[key] = value;
 		}
 	}
 
 	return properties;
+}
+
+/**
+ * Creates a linked market ticker card.
+ * @param {object} params
+ * @param {string} params.source
+ * @returns {string}
+ */
+function createTickerPlaceholder({ source }) {
+	const properties = parseComponentProperties({ source, allowedKeys: tickerPropertyNames });
+	const ticker = getTickerValues(properties);
+	const marketMarkup = `<span class="ticker-market">${escapeHtml(ticker.market || "Market")}</span>`;
+	const changeMarkup = ticker.change
+		? `<span class="ticker-change ${getTickerChangeClass(ticker.change)}">${escapeHtml(ticker.change)}</span>`
+		: "";
+	const searchUrl = getTickerSearchUrl({ symbol: ticker.symbol, label: ticker.label });
+	const searchTerm = ticker.symbol || ticker.label || "market instrument";
+	const accessibleLabel = `${ticker.label}, ${ticker.market || "market"}, ticker ${ticker.symbol || "unavailable"}, quote ${ticker.quote}${ticker.change ? `, change ${ticker.change}` : ""}. Search Google for stock ticker ${searchTerm}`;
+
+	return `<figure class="ticker-embed"><a class="ticker-link" href="${escapeAttribute(searchUrl)}" target="_blank" rel="noreferrer" aria-label="${escapeAttribute(accessibleLabel)}" title="Search Google for stock ticker ${escapeAttribute(searchTerm)}"><span class="ticker-identity">${marketMarkup}<strong class="ticker-label">${escapeHtml(ticker.label)}</strong><span class="ticker-symbol">${escapeHtml(ticker.symbol || "Symbol unavailable")}</span></span><span class="ticker-pricing"><span class="ticker-quote-row"><strong class="ticker-quote">${escapeHtml(ticker.quote)}</strong><i class="fa-solid fa-arrow-up-right-from-square ticker-search-icon" aria-hidden="true"></i></span>${changeMarkup}</span></a></figure>`;
+}
+
+/**
+ * Creates a four-quadrant SWOT analysis card.
+ * @param {object} params
+ * @param {string} params.source
+ * @returns {string}
+ */
+function createSwotPlaceholder({ source }) {
+	const properties = parseComponentProperties({ source, allowedKeys: swotPropertyNames });
+	const factors = getSwotFactors(properties);
+	let quadrantMarkup = "";
+
+	for (let index = 0; index < factors.length; index += 1) {
+		quadrantMarkup += createSwotQuadrantMarkup(factors[index]);
+	}
+
+	return `<figure class="swot-embed" aria-label="SWOT analysis"><dl class="swot-grid">${quadrantMarkup}</dl></figure>`;
+}
+
+/**
+ * Gets normalized labels and values for the four SWOT factors.
+ * @param {object} params
+ * @param {string} params.strengths
+ * @param {string} params.weaknesses
+ * @param {string} params.opportunities
+ * @param {string} params.threats
+ * @returns {Array<object>}
+ */
+function getSwotFactors({ strengths, weaknesses, opportunities, threats }) {
+	return [
+		{ key: "strengths", initial: "S", label: "Strengths", value: String(strengths || "").trim() || "—" },
+		{ key: "weaknesses", initial: "W", label: "Weaknesses", value: String(weaknesses || "").trim() || "—" },
+		{ key: "opportunities", initial: "O", label: "Opportunities", value: String(opportunities || "").trim() || "—" },
+		{ key: "threats", initial: "T", label: "Threats", value: String(threats || "").trim() || "—" }
+	];
+}
+
+/**
+ * Creates one SWOT factor quadrant.
+ * @param {object} params
+ * @param {string} params.key
+ * @param {string} params.initial
+ * @param {string} params.label
+ * @param {string} params.value
+ * @returns {string}
+ */
+function createSwotQuadrantMarkup({ key, initial, label, value }) {
+	return `<div class="swot-quadrant swot-${escapeAttribute(key)}"><dt class="swot-factor"><span class="swot-initial" aria-hidden="true">${escapeHtml(initial)}</span><span>${escapeHtml(label)}</span></dt><dd class="swot-value">${escapeHtml(value)}</dd></div>`;
+}
+
+/**
+ * Creates a linked periodic table of elements.
+ * @param {object} params
+ * @param {string} params.source
+ * @returns {string}
+ */
+function createPtePlaceholder({ source }) {
+	const properties = parseComponentProperties({ source, allowedKeys: ptePropertyNames });
+	const pte = getPteValues(properties);
+	const linkConfig = getPeriodicTableLinkConfig();
+	const highlightedSymbols = new Set(pte.elements);
+	const hasHighlights = highlightedSymbols.size > 0;
+	const className = hasHighlights ? "pte-embed has-highlights" : "pte-embed";
+	const summary = hasHighlights
+		? `${formatNumber(highlightedSymbols.size)} highlighted ${highlightedSymbols.size === 1 ? "element" : "elements"}`
+		: `${formatNumber(periodicTableElements.length)} elements`;
+	const elementMarkup = [];
+
+	for (let index = 0; index < periodicTableElements.length; index += 1) {
+		elementMarkup.push(createPteElementMarkup({
+			element: periodicTableElements[index],
+			highlightedSymbols,
+			linkConfig
+		}));
+	}
+
+	return `<figure class="${className}"><figcaption class="pte-header"><span class="pte-heading"><strong class="pte-label">${escapeHtml(pte.label)}</strong><span class="pte-summary">${escapeHtml(summary)}</span></span><span class="pte-service"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>${escapeHtml(linkConfig.label)} links</span></span></figcaption><div class="pte-scroll"><div class="pte-grid" aria-label="${escapeAttribute(pte.label)}">${elementMarkup.join("")}</div></div></figure>`;
+}
+
+/**
+ * Creates one linked element tile.
+ * @param {object} params
+ * @param {object} params.element
+ * @param {Set<string>} params.highlightedSymbols
+ * @param {object} params.linkConfig
+ * @returns {string}
+ */
+function createPteElementMarkup({ element, highlightedSymbols, linkConfig }) {
+	const isHighlighted = highlightedSymbols.has(element.symbol);
+	const className = isHighlighted ? "pte-element is-highlighted" : "pte-element";
+	const url = getPeriodicTableElementUrl({ element, template: linkConfig.template });
+	const accessibleLabel = `${element.name}, ${element.symbol}, atomic number ${element.atomicNumber}${isHighlighted ? ", highlighted" : ""}. Open in ${linkConfig.label}`;
+
+	return `<a class="${className}" href="${escapeAttribute(url)}" target="_blank" rel="noreferrer" data-column="${element.column}" data-row="${element.row}" aria-label="${escapeAttribute(accessibleLabel)}" title="${escapeAttribute(accessibleLabel)}"><span class="pte-number">${element.atomicNumber}</span><strong class="pte-symbol">${escapeHtml(element.symbol)}</strong><span class="pte-name">${escapeHtml(element.name)}</span></a>`;
+}
+
+/**
+ * Normalizes periodic-table component values for display.
+ * @param {object} params
+ * @param {string} params.label
+ * @param {string} params.elements
+ * @returns {{ label: string, elements: Array<string> }}
+ */
+function getPteValues({ label, elements }) {
+	const tokens = String(elements || "").split(/[\s,;|]+/);
+	const symbols = [];
+
+	for (let index = 0; index < tokens.length; index += 1) {
+		const element = periodicTableElementLookup.get(tokens[index].trim().toLowerCase());
+
+		if (element && !symbols.includes(element.symbol)) {
+			symbols.push(element.symbol);
+		}
+	}
+
+	return {
+		label: String(label || "").trim() || "Periodic table of elements",
+		elements: symbols
+	};
+}
+
+/**
+ * Gets the configured periodic-table link service.
+ * @returns {{ label: string, template: string }}
+ */
+function getPeriodicTableLinkConfig() {
+	return {
+		label: String(state.config.periodicTable?.linkLabel || "").trim() || defaultPeriodicTableLinkLabel,
+		template: String(state.config.periodicTable?.linkTemplate || "").trim() || defaultPeriodicTableLinkTemplate
+	};
+}
+
+/**
+ * Creates a case-insensitive element-symbol lookup.
+ * @returns {Map<string, object>}
+ */
+function createPeriodicTableElementLookup() {
+	const lookup = new Map();
+
+	for (let index = 0; index < periodicTableElements.length; index += 1) {
+		const element = periodicTableElements[index];
+		lookup.set(element.symbol.toLowerCase(), element);
+	}
+
+	return lookup;
+}
+
+/**
+ * Normalizes ticker component values for display.
+ * @param {object} params
+ * @param {string} params.symbol
+ * @param {string} params.label
+ * @param {string} params.quote
+ * @param {string} params.market
+ * @param {string} params.change
+ * @returns {object}
+ */
+function getTickerValues({ symbol, label, quote, market, change }) {
+	const normalizedSymbol = String(symbol || "").trim();
+	const normalizedLabel = String(label || "").trim();
+
+	return {
+		symbol: normalizedSymbol,
+		label: normalizedLabel || normalizedSymbol || "Market instrument",
+		quote: String(quote || "").trim() || "—",
+		market: String(market || "").trim(),
+		change: String(change || "").trim()
+	};
+}
+
+/**
+ * Gets the visual state for a signed ticker change.
+ * @param {string} change
+ * @returns {string}
+ */
+function getTickerChangeClass(change) {
+	const normalized = String(change || "").trim();
+
+	if (/^(\+|↑)/.test(normalized)) {
+		return "is-positive";
+	}
+
+	if (/^(-|−|↓)/.test(normalized)) {
+		return "is-negative";
+	}
+
+	return "is-neutral";
+}
+
+/**
+ * Gets a Google search URL for a ticker symbol.
+ * @param {object} params
+ * @param {string} params.symbol
+ * @param {string} params.label
+ * @returns {string}
+ */
+function getTickerSearchUrl({ symbol, label }) {
+	const searchTerm = String(symbol || label || "").trim();
+	const query = searchTerm ? `stock ticker ${searchTerm}` : "stock ticker";
+
+	return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
 
 /**
