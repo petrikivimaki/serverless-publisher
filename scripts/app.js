@@ -67,6 +67,37 @@ const swotPropertyNames = ["strengths", "weaknesses", "opportunities", "threats"
 const ptePropertyNames = ["label", "elements"];
 const defaultPeriodicTableLinkTemplate = "https://pubchem.ncbi.nlm.nih.gov/element/{Z}";
 const defaultPeriodicTableLinkLabel = "PubChem";
+const calloutTypes = {
+	note: { title: "Note" },
+	abstract: { title: "Abstract" },
+	info: { title: "Info" },
+	todo: { title: "Todo" },
+	tip: { title: "Tip" },
+	success: { title: "Success" },
+	question: { title: "Question" },
+	warning: { title: "Warning" },
+	failure: { title: "Failure" },
+	danger: { title: "Danger" },
+	bug: { title: "Bug" },
+	example: { title: "Example" },
+	quote: { title: "Quote" }
+};
+const calloutTypeAliases = {
+	summary: "abstract",
+	tldr: "abstract",
+	hint: "tip",
+	important: "tip",
+	check: "success",
+	done: "success",
+	help: "question",
+	faq: "question",
+	caution: "warning",
+	attention: "warning",
+	fail: "failure",
+	missing: "failure",
+	error: "danger",
+	cite: "quote"
+};
 const periodicTableElementLookup = createPeriodicTableElementLookup();
 let codeRunnerSessionCount = 0;
 const themes = [
@@ -520,15 +551,17 @@ function indexNotes({ files }) {
 	for (let index = 0; index < files.length; index += 1) {
 		const file = files[index];
 		const parsed = parseFrontmatter(file.content);
-		const title = parsed.metadata.title || getTitleFromMarkdown(parsed.body) || removeExtension(file.name);
+		const visibleBody = stripObsidianComments({ markdown: parsed.body });
+		const title = parsed.metadata.title || getTitleFromMarkdown(visibleBody) || removeExtension(file.name);
 
 		notes.push({
 			...file,
 			title,
 			body: parsed.body,
+			visibleBody,
 			metadata: parsed.metadata,
-			links: extractWikiLinks(parsed.body),
-			searchText: `${title} ${file.path} ${parsed.body} ${getSearchMetadataText({ metadata: parsed.metadata })}`.toLowerCase()
+			links: extractWikiLinks(visibleBody),
+			searchText: `${title} ${file.path} ${visibleBody} ${getSearchMetadataText({ metadata: parsed.metadata })}`.toLowerCase()
 		});
 	}
 
@@ -1340,7 +1373,7 @@ function createResultButton({ note, query, index }) {
 	button.innerHTML = `
 		<span class="result-title">${escapeHtml(note.title)}</span>
 		<span class="result-path">${escapeHtml(note.path)}</span>
-		<span class="result-excerpt">${escapeHtml(getExcerpt({ text: note.body, query }))}</span>
+		<span class="result-excerpt">${escapeHtml(getExcerpt({ text: note.visibleBody, query }))}</span>
 	`;
 	button.dataset.path = note.path;
 	addNavigationSound({ element: button, cue: "page" });
@@ -1744,7 +1777,7 @@ function renderArticle({ note }) {
 	initializeArticleCodeBlocks();
 	highlightArticleCode();
 	initializeArticleMaps();
-	typesetArticleMath({ markdown: note.body });
+	typesetArticleMath({ markdown: note.visibleBody });
 	renderArticleScrollState();
 }
 
@@ -2593,7 +2626,7 @@ function renderMetadata({ note }) {
  * @returns {string}
  */
 function getArticleText({ markdown }) {
-	return stripMarkdown(markdown).replace(/\s+/g, " ").trim();
+	return stripMarkdown(stripObsidianComments({ markdown })).replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -2818,7 +2851,7 @@ function renderTableOfContents({ note }) {
  * @returns {Array<object>}
  */
 function extractHeadings({ markdown }) {
-	const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+	const lines = stripObsidianComments({ markdown }).replace(/\r\n/g, "\n").split("\n");
 	const headings = [];
 	const slugs = {};
 	let inCode = false;
@@ -3943,8 +3976,199 @@ function hideSelectionMenu() {
  * @returns {string}
  */
 function renderMarkdown({ markdown }) {
-	const html = marked.parse(replaceWikiLinks({ markdown: replaceComponentSyntax({ markdown }) }));
+	const visibleMarkdown = stripObsidianComments({ markdown });
+	const html = marked.parse(replaceWikiLinks({ markdown: replaceComponentSyntax({ markdown: visibleMarkdown }) }));
 	return resolveRenderedLinks({ html });
+}
+
+/**
+ * Removes Obsidian comments outside fenced and inline code.
+ * @param {object} params
+ * @param {string} params.markdown
+ * @returns {string}
+ */
+function stripObsidianComments({ markdown }) {
+	const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+	const output = [];
+	let inComment = false;
+	let inlineCodeLength = 0;
+	let fence = null;
+
+	for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+		const line = lines[lineIndex];
+
+		if (fence) {
+			output.push(line);
+
+			if (isClosingFenceLine({
+				line,
+				marker: fence.marker,
+				minimumLength: fence.length
+			})) {
+				fence = null;
+			}
+
+			continue;
+		}
+
+		if (!inComment && !inlineCodeLength) {
+			const opening = getFenceOpening(line);
+
+			if (opening) {
+				fence = opening;
+				output.push(line);
+				continue;
+			}
+		}
+
+		const result = stripObsidianCommentsFromLine({
+			lines,
+			lineIndex,
+			inComment,
+			inlineCodeLength
+		});
+
+		output.push(result.line);
+		inComment = result.inComment;
+		inlineCodeLength = result.inlineCodeLength;
+
+		if (!inComment && !inlineCodeLength) {
+			fence = getFenceOpening(result.line);
+		}
+	}
+
+	return output.join("\n");
+}
+
+/**
+ * Removes comment ranges from one non-fenced Markdown line.
+ * @param {object} params
+ * @param {Array<string>} params.lines
+ * @param {number} params.lineIndex
+ * @param {boolean} params.inComment
+ * @param {number} params.inlineCodeLength
+ * @returns {{ line: string, inComment: boolean, inlineCodeLength: number }}
+ */
+function stripObsidianCommentsFromLine({ lines, lineIndex, inComment, inlineCodeLength }) {
+	const source = lines[lineIndex];
+	let output = "";
+	let index = 0;
+
+	while (index < source.length) {
+		if (inComment) {
+			if (source.startsWith("%%", index) && !isEscapedCharacter({ text: source, index })) {
+				inComment = false;
+				index += 2;
+			} else {
+				index += 1;
+			}
+
+			continue;
+		}
+
+		if (!inlineCodeLength && source.startsWith("%%", index) && !isEscapedCharacter({ text: source, index })) {
+			inComment = true;
+			index += 2;
+			continue;
+		}
+
+		if (source[index] === "`") {
+			const runLength = countCharacterRun({ text: source, startIndex: index, character: "`" });
+
+			output += source.slice(index, index + runLength);
+
+			if (inlineCodeLength === runLength) {
+				inlineCodeLength = 0;
+			} else if (!inlineCodeLength && !isEscapedCharacter({ text: source, index }) && hasClosingInlineCodeRun({
+				lines,
+				lineIndex,
+				startIndex: index + runLength,
+				runLength
+			})) {
+				inlineCodeLength = runLength;
+			}
+
+			index += runLength;
+			continue;
+		}
+
+		output += source[index];
+		index += 1;
+	}
+
+	return { line: output, inComment, inlineCodeLength };
+}
+
+/**
+ * Checks whether an inline-code delimiter has a matching run before a paragraph break.
+ * @param {object} params
+ * @param {Array<string>} params.lines
+ * @param {number} params.lineIndex
+ * @param {number} params.startIndex
+ * @param {number} params.runLength
+ * @returns {boolean}
+ */
+function hasClosingInlineCodeRun({ lines, lineIndex, startIndex, runLength }) {
+	for (let candidateLineIndex = lineIndex; candidateLineIndex < lines.length; candidateLineIndex += 1) {
+		const line = lines[candidateLineIndex];
+		let index = candidateLineIndex === lineIndex ? startIndex : 0;
+
+		if (candidateLineIndex > lineIndex && !line.trim()) {
+			return false;
+		}
+
+		while (index < line.length) {
+			if (line[index] !== "`") {
+				index += 1;
+				continue;
+			}
+
+			const candidateLength = countCharacterRun({ text: line, startIndex: index, character: "`" });
+
+			if (candidateLength === runLength) {
+				return true;
+			}
+
+			index += candidateLength;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Counts a consecutive run of one character.
+ * @param {object} params
+ * @param {string} params.text
+ * @param {number} params.startIndex
+ * @param {string} params.character
+ * @returns {number}
+ */
+function countCharacterRun({ text, startIndex, character }) {
+	let index = startIndex;
+
+	while (text[index] === character) {
+		index += 1;
+	}
+
+	return index - startIndex;
+}
+
+/**
+ * Checks whether a character is preceded by an odd number of backslashes.
+ * @param {object} params
+ * @param {string} params.text
+ * @param {number} params.index
+ * @returns {boolean}
+ */
+function isEscapedCharacter({ text, index }) {
+	let slashCount = 0;
+
+	for (let slashIndex = index - 1; slashIndex >= 0 && text[slashIndex] === "\\"; slashIndex -= 1) {
+		slashCount += 1;
+	}
+
+	return slashCount % 2 === 1;
 }
 
 /**
@@ -4039,6 +4263,20 @@ function getFenceOpening(line) {
 }
 
 /**
+ * Checks whether a line closes the active fenced code block.
+ * @param {object} params
+ * @param {string} params.line
+ * @param {string} params.marker
+ * @param {number} params.minimumLength
+ * @returns {boolean}
+ */
+function isClosingFenceLine({ line, marker, minimumLength }) {
+	const match = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+
+	return Boolean(match && match[1][0] === marker && match[1].length >= minimumLength);
+}
+
+/**
  * Finds a matching closing Markdown fence.
  * @param {object} params
  * @param {Array<string>} params.lines
@@ -4049,9 +4287,7 @@ function getFenceOpening(line) {
  */
 function findClosingFenceIndex({ lines, startIndex, marker, minimumLength }) {
 	for (let index = startIndex; index < lines.length; index += 1) {
-		const match = lines[index].match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
-
-		if (match && match[1][0] === marker && match[1].length >= minimumLength) {
+		if (isClosingFenceLine({ line: lines[index], marker, minimumLength })) {
 			return index;
 		}
 	}
@@ -4536,16 +4772,129 @@ function replaceWikiLinksInText(text) {
 function resolveRenderedLinks({ html }) {
 	const template = document.createElement("template");
 	template.innerHTML = html;
-	const links = template.content.querySelectorAll("a[href]");
 
+	transformRenderedCallouts({ template });
 	addRenderedHeadingIds({ template });
 	wrapRenderedTables({ template });
+	const links = template.content.querySelectorAll("a[href]");
 
 	for (let index = 0; index < links.length; index += 1) {
 		resolveRenderedLink({ link: links[index] });
 	}
 
 	return template.innerHTML;
+}
+
+/**
+ * Transforms rendered Obsidian callout blockquotes into semantic callout elements.
+ * @param {object} params
+ * @param {HTMLTemplateElement} params.template
+ * @returns {void}
+ */
+function transformRenderedCallouts({ template }) {
+	const blockquotes = template.content.querySelectorAll("blockquote");
+
+	for (let index = 0; index < blockquotes.length; index += 1) {
+		const blockquote = blockquotes[index];
+		const definition = getRenderedCalloutDefinition({ blockquote });
+
+		if (!definition) {
+			continue;
+		}
+
+		removeRenderedCalloutMarker({ paragraph: definition.paragraph, markerLength: definition.markerLength });
+		blockquote.replaceWith(createRenderedCallout({ blockquote, definition, index }));
+	}
+}
+
+/**
+ * Reads a callout definition from the first rendered paragraph in a blockquote.
+ * @param {object} params
+ * @param {HTMLQuoteElement} params.blockquote
+ * @returns {object|null}
+ */
+function getRenderedCalloutDefinition({ blockquote }) {
+	const paragraph = blockquote.firstElementChild;
+
+	if (!paragraph || paragraph.tagName !== "P") {
+		return null;
+	}
+
+	const source = paragraph.innerHTML;
+	const match = source.match(/^\[!([a-z][\w-]*)\]([+-]?)(?:[ \t]+([^\n]*))?(?:\n|$)/i);
+
+	if (!match) {
+		return null;
+	}
+
+	const requestedType = match[1].toLowerCase();
+	const type = Object.hasOwn(calloutTypeAliases, requestedType) ? calloutTypeAliases[requestedType] : requestedType;
+	const supportedType = Object.hasOwn(calloutTypes, type) ? type : "note";
+
+	return {
+		paragraph,
+		markerLength: match[0].length,
+		type: supportedType,
+		titleMarkup: match[3]?.trim() || escapeHtml(calloutTypes[supportedType].title),
+		fold: match[2]
+	};
+}
+
+/**
+ * Removes the callout declaration while keeping content from the same paragraph.
+ * @param {object} params
+ * @param {HTMLParagraphElement} params.paragraph
+ * @param {number} params.markerLength
+ * @returns {void}
+ */
+function removeRenderedCalloutMarker({ paragraph, markerLength }) {
+	paragraph.innerHTML = paragraph.innerHTML.slice(markerLength);
+
+	if (!paragraph.textContent.trim() && !paragraph.children.length) {
+		paragraph.remove();
+	}
+}
+
+/**
+ * Creates one semantic callout from rendered blockquote content.
+ * @param {object} params
+ * @param {HTMLQuoteElement} params.blockquote
+ * @param {object} params.definition
+ * @param {number} params.index
+ * @returns {HTMLElement}
+ */
+function createRenderedCallout({ blockquote, definition, index }) {
+	const callout = document.createElement(definition.fold ? "details" : "aside");
+	const title = document.createElement(definition.fold ? "summary" : "div");
+	const titleText = document.createElement("span");
+	const content = document.createElement("div");
+
+	callout.className = `callout callout-${definition.type}`;
+	callout.dataset.callout = definition.type;
+	callout.classList.toggle("is-foldable", Boolean(definition.fold));
+	title.className = "callout-title";
+	title.id = `callout-title-${index + 1}`;
+	callout.setAttribute("aria-labelledby", title.id);
+	titleText.className = "callout-title-text";
+	titleText.innerHTML = definition.titleMarkup;
+	content.className = "callout-content";
+	title.append(titleText);
+
+	if (definition.fold) {
+		const foldIcon = document.createElement("span");
+		foldIcon.className = "callout-fold-icon";
+		foldIcon.setAttribute("aria-hidden", "true");
+		foldIcon.innerHTML = `<i class="fa-solid fa-chevron-right"></i>`;
+		title.append(foldIcon);
+		callout.open = definition.fold === "+";
+	}
+
+	while (blockquote.firstChild) {
+		content.append(blockquote.firstChild);
+	}
+
+	callout.append(title, content);
+	return callout;
 }
 
 /**

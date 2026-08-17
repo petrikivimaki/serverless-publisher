@@ -8,6 +8,11 @@
 		"workflow/publish.md",
 		"reference/markdown.md",
 		"reference/extensions/obsidian-and-papyrus.md",
+		"reference/extensions/frontmatter.md",
+		"reference/extensions/obsidian-syntax.md",
+		"reference/extensions/callouts.md",
+		"reference/extensions/mermaid.md",
+		"reference/extensions/papyrus-components.md",
 		"reference/interface.md"
 	]
 }

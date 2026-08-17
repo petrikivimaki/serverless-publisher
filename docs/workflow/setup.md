@@ -39,6 +39,6 @@ The `appearance` section defines the initial theme, sound state, typeface, text 
 
 ## 4. Write your vault
 
-Use Obsidian or another Markdown editor to create notes. Link notes with wiki links, add frontmatter when useful, and keep media paths predictable.
+Use Obsidian or another Markdown editor to create notes. Link notes with wiki links, add [[reference/extensions/frontmatter|frontmatter]] when useful, and keep media paths predictable.
 
 Next: [[workflow/publish]].

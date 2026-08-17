@@ -10,7 +10,7 @@ grayscale: true
 
 # Papyrus Docs
 
-Papyrus turns a folder of Markdown files into a public, Obsidian-style knowledge base for GitHub Pages. This docs vault introduces the project and also acts as live sample content for testing search, file browsing, backlinks, metadata, tables, code, maps, tickers, periodic tables, SWOT analyses, and wiki links.
+Papyrus turns a folder of Markdown files into a public, Obsidian-style knowledge base for GitHub Pages. This docs vault introduces the project and also acts as live sample content for testing search, file browsing, backlinks, metadata, source comments, blockquotes, callouts, tables, code, maps, tickers, periodic tables, SWOT analyses, and wiki links.
 
 ## Start here
 
@@ -25,9 +25,12 @@ Keep your writing as plain text, keep your publishing site as static files, and 
 
 > This vault is intentionally small. Replace these notes with your own Markdown vault when you are ready.
 
+> [!tip] Use the reference notes as a test gallery
+> [[reference/markdown|Markdown basics]] includes standard blockquote examples. [[reference/extensions/callouts|Obsidian callouts]] includes every callout type plus expanded, collapsed, and nested examples.
+
 ## Example map
 
-Papyrus turns a `map` code fence into an interactive component. See [[reference/extensions/obsidian-and-papyrus|the map component contract]] for every property.
+Papyrus turns a `map` code fence into an interactive component. See [[reference/extensions/papyrus-components|the map component contract]] for every property.
 
 ```map
 latitude: 60.1699
@@ -40,7 +43,7 @@ label: Helsinki
 
 ## Example tickers
 
-Papyrus turns a `ticker` code fence into a full-width linked market card. The values below are illustrative snapshots rather than live market data. See [[reference/extensions/obsidian-and-papyrus|the custom component contract]] for every property.
+Papyrus turns a `ticker` code fence into a full-width linked market card. The values below are illustrative snapshots rather than live market data. See [[reference/extensions/papyrus-components|the custom component contract]] for every property.
 
 ```ticker
 symbol: NOKIA
@@ -60,9 +63,9 @@ change: -0.42% · illustrative
 
 ## Example periodic table
 
-Papyrus turns a `pte` code fence into a complete linked periodic table. The symbols listed under `elements` receive highlighted styling. See [[reference/extensions/obsidian-and-papyrus|the periodic-table component contract]] for its properties and link configuration.
+Papyrus turns a `pte` code fence into a complete linked periodic table. The symbols listed under `elements` receive highlighted styling. See [[reference/extensions/papyrus-components|the periodic-table component contract]] for its properties and link configuration.
 
-Papyrus also renders Obsidian-compatible `mermaid` code fences as diagrams, including vault navigation from nodes marked with Mermaid's `internal-link` class. See [[reference/extensions/obsidian-and-papyrus#Mermaid diagrams|the Mermaid diagram guide]].
+Papyrus also renders Obsidian-compatible `mermaid` code fences as diagrams, including vault navigation from nodes marked with Mermaid's `internal-link` class. See [[reference/extensions/mermaid|the Mermaid diagram guide]].
 
 ```pte
 label: Elements in caffeine
@@ -71,7 +74,7 @@ elements: H, C, N, O
 
 ## Example SWOT analysis
 
-Papyrus turns a `swot` code fence into a four-quadrant analysis card. See [[reference/extensions/obsidian-and-papyrus|the custom component contract]] for the complete syntax.
+Papyrus turns a `swot` code fence into a four-quadrant analysis card. See [[reference/extensions/papyrus-components|the custom component contract]] for the complete syntax.
 
 ```swot
 strengths: Plain-text content stays portable and easy to version.

@@ -11,6 +11,8 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 - Obsidian-compatible Mermaid diagrams with light and dark themes
 - Markdown file tree with expandable folders
 - Wiki links, backlinks, and outgoing link lists
+- Obsidian `%%` source comments hidden from rendered articles and indexes
+- Standard Markdown blockquotes and typed, foldable Obsidian callouts
 - Full-vault search over titles, paths, tags, and body text
 - Browser-local bookmarks using `localStorage`
 - Runtime-generated Cuelume interaction sounds with a saved on/off control

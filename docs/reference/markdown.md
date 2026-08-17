@@ -40,11 +40,36 @@ Papyrus places standard Markdown tables in a responsive scroll container. Each t
 | Tables | Yes | This table |
 | Wiki links | Yes | Internal notes |
 
+## Blockquotes
+
+Use `>` at the start of a line for a standard Markdown blockquote. Papyrus gives ordinary quotes a thick straight inset edge, callout-like spacing, and a transparent background while preserving nested Markdown.
+
+```md
+> Good documentation is a map: it shows both the destination and the useful paths between ideas.
+>
+> — Papyrus example
+```
+
+> Good documentation is a map: it shows both the destination and the useful paths between ideas.
+>
+> — Papyrus example
+
+Blockquotes can contain multiple paragraphs, emphasis, links, lists, and nested quotes:
+
+> A longer quotation can introduce a few related points.
+>
+> - Plain Markdown stays portable.
+> - **Formatting** continues to work inside the quote.
+>
+> > Nested blockquotes remain visually distinct.
+
+For titled, typed, or foldable quote blocks, see [[reference/extensions/callouts|Obsidian callouts]].
+
 ## Code fences
 
 Papyrus adds language and line-count metadata plus copy, line wrapping, and collapse controls to fenced code blocks. **Wrap** soft-wraps long lines within the available reading width and changes to **Unwrap** while active. JavaScript fences also include a **Run** action. Each run starts in a hidden, script-only iframe sandbox protected by a restrictive content security policy. Calls to `console.log`, `console.info`, `console.warn`, `console.error`, and `console.debug` appear in a console directly below the code block; returned values are not printed automatically. The console header provides dedicated controls to copy its output or close the console and stop its sandbox. Running the block again replaces its previous sandbox and console.
 
-The `mermaid` fence is rendered as an Obsidian-compatible diagram instead of a normal code block. See [[reference/extensions/obsidian-and-papyrus#Mermaid diagrams|Mermaid diagrams]] for examples and internal note links.
+The `mermaid` fence is rendered as an Obsidian-compatible diagram instead of a normal code block. See [[reference/extensions/mermaid|Mermaid diagrams]] for examples and internal note links.
 
 ```js
 /**

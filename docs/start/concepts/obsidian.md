@@ -16,7 +16,7 @@ Useful Obsidian ideas:
 - Frontmatter stores metadata at the top of a file
 - Plugins can add authoring features while the underlying files stay portable
 
-Papyrus supports enough Obsidian-style conventions to make a vault feel familiar online. See [[reference/extensions/obsidian-and-papyrus]] for the short list.
+Papyrus supports enough Obsidian-style conventions to make a vault feel familiar online. See [[reference/extensions/obsidian-and-papyrus|the extensions index]] for focused guides to syntax, callouts, diagrams, and Papyrus components.
 
 ## Learn more
 
