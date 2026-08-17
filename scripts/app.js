@@ -202,6 +202,7 @@ const selectors = {
 	navigationStatusMessage: "[data-navigation-status-message]",
 	vaultNoteCount: "[data-vault-note-count]",
 	vaultSource: "[data-vault-source]",
+	vaultSourceIcon: "[data-vault-source-icon]",
 	vaultTitle: "[data-vault-title]"
 };
 
@@ -256,11 +257,18 @@ async function loadVault() {
 		select(selectors.vaultTitle).textContent = state.config.title || "Papyrus";
 		state.files = await loadFiles({ config: state.config });
 		state.notes = indexNotes({ files: state.files });
-		select(selectors.vaultSource).textContent = getVaultSourceLabel({ config: state.config });
+		const vaultSource = select(selectors.vaultSource);
+		const vaultSourceLabel = getVaultSourceLabel({ config: state.config });
+		vaultSource.textContent = vaultSourceLabel;
+		vaultSource.setAttribute("title", vaultSourceLabel);
+		select(selectors.vaultSourceIcon).className = state.config.github?.enabled
+			? "fa-brands fa-github"
+			: "fa-solid fa-hard-drive";
 		renderAll();
 		openRouteFromHash();
 		await finishPageLoadAnimation({ loadAnimation });
-		showNavigationStatus({ message: `Loaded ${state.notes.length} notes` });
+		const loadSource = getVaultLoadSource({ config: state.config });
+		showNavigationStatus({ message: `Loaded ${state.notes.length} notes from ${loadSource}` });
 	} catch (error) {
 		await finishPageLoadAnimation({ loadAnimation });
 		renderError({ error });
@@ -297,7 +305,7 @@ function startPageLoadAnimation() {
 		return null;
 	}
 
-	logo.src = config.logo || "images/logo-white-transparent-1000x1000.png";
+	logo.src = config.logo || "images/papyrus-mark.png";
 	mask.style.setProperty("--page-load-fade-ms", `${fadeMs}ms`);
 	mask.classList.remove("is-dimming", "is-leaving");
 	mask.classList.add("is-visible");
@@ -7264,7 +7272,21 @@ function getVaultSourceLabel({ config }) {
 		return `${config.github.owner}/${config.github.repo}`;
 	}
 
-	return "Local sample vault";
+	return "Local vault";
+}
+
+/**
+ * Gets a human description of the source used to load the active vault.
+ * @param {object} params
+ * @param {object} params.config
+ * @returns {string}
+ */
+function getVaultLoadSource({ config }) {
+	if (config.github?.enabled) {
+		return `${config.github.owner}/${config.github.repo} on GitHub`;
+	}
+
+	return "local vault";
 }
 
 /**

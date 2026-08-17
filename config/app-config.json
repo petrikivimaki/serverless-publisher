@@ -146,7 +146,7 @@
   },
   "pageLoadAnimation": {
     "enabled": false,
-    "logo": "",
+    "logo": "images/papyrus-mark.png",
     "durationMs": 1500,
     "fadeMs": 420
   },

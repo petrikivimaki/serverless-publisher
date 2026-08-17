@@ -152,7 +152,7 @@
 	},
 	"pageLoadAnimation": {
 		"enabled": true,
-		"logo": "images/logo-white-transparent-1000x1000.png",
+		"logo": "images/papyrus-mark.png",
 		"durationMs": 1500,
 		"fadeMs": 420
 	},

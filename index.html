@@ -28,15 +28,36 @@
             property="og:description"
             content="Papyrus is a serverless markdown knowledge base frontend for Obsidian & GitHub Pages."
         />
-        <meta property="og:url" content="https://petrikivimaki.github.io/" />
+        <meta property="og:url" content="https://username.github.io/" />
         <meta property="og:locale" content="en_US" />
-        <meta name="twitter:card" content="summary" />
+		<meta
+			property="og:image"
+			content="https://username.github.io/images/papyrus-social-card.png"
+		/>
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta
+			property="og:image:alt"
+			content="Layered cream paper sheets and a rolled scroll on a white background."
+		/>
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Papyrus" />
         <meta
             name="twitter:description"
             content="Papyrus is a serverless markdown knowledge base frontend for Obsidian & GitHub Pages."
         />
-        <link rel="canonical" href="https://petrikivimaki.github.io/" />
+		<meta
+			name="twitter:image"
+			content="https://username.github.io/images/papyrus-social-card.png"
+		/>
+		<meta
+			name="twitter:image:alt"
+			content="Layered cream paper sheets and a rolled scroll on a white background."
+		/>
+        <link rel="canonical" href="https://username.github.io/" />
+		<link rel="icon" type="image/png" sizes="512x512" href="images/papyrus-mark.png" />
+		<link rel="apple-touch-icon" href="images/papyrus-mark.png" />
         <title>Papyrus</title>
         <link
             rel="stylesheet"
@@ -56,23 +77,18 @@
     <body>
 		<div class="app-shell is-left-collapsed is-right-collapsed">
 			<aside class="left-panel" data-left-panel>
-				<header class="panel-header">
-					<div>
-						<p class="eyebrow" data-vault-source>Local vault</p>
+				<header class="panel-header panel-brand-header">
+					<div class="panel-brand">
+						<img
+							class="panel-brand-logo"
+							src="images/papyrus-mark.png"
+							width="36"
+							height="36"
+							alt=""
+						/>
 						<h1 data-vault-title>Papyrus</h1>
 					</div>
 					<div class="panel-header-actions">
-						<button
-							class="icon-button"
-							type="button"
-							data-action="refresh"
-							data-cuelume-hover="tick"
-							data-cuelume-toggle="loading"
-							aria-label="Refresh content"
-							title="Refresh content"
-						>
-							<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
-						</button>
 						<button
 							class="icon-button"
 							type="button"
@@ -145,7 +161,27 @@
                         class="file-tree"
                         data-file-tree
                         aria-label="Markdown files"
-                    ></nav>
+					></nav>
+					<footer class="vault-source-card" aria-label="Vault source">
+						<span class="vault-source-icon" aria-hidden="true">
+							<i class="fa-solid fa-hard-drive" data-vault-source-icon></i>
+						</span>
+						<div class="vault-source-copy">
+							<strong class="vault-source-value" data-vault-source>Local vault</strong>
+							<span class="vault-source-label">Vault source</span>
+						</div>
+						<button
+							class="icon-button"
+							type="button"
+							data-action="refresh"
+							data-cuelume-hover="tick"
+							data-cuelume-toggle="loading"
+							aria-label="Refresh content"
+							title="Refresh content"
+						>
+							<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+						</button>
+					</footer>
                 </section>
 
                 <section

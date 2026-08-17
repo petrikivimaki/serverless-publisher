@@ -401,6 +401,39 @@ button {
 	align-items: center;
 }
 
+.panel-brand-header {
+	min-height: 72px;
+	padding: 16px 14px;
+}
+
+.panel-brand-header h1 {
+	min-width: 0;
+	overflow: hidden;
+	font-size: 20px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.panel-brand {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.panel-brand-logo {
+	display: block;
+	flex: 0 0 36px;
+	width: 36px;
+	height: 36px;
+	object-fit: contain;
+}
+
+:root[data-theme="dark"] .panel-brand-logo,
+:root[data-theme="ocean"] .panel-brand-logo {
+	filter: invert(1);
+}
+
 .panel-tabs {
 	position: relative;
 	isolation: isolate;
@@ -516,6 +549,12 @@ button {
 	display: block;
 }
 
+.panel-view[data-view="files"].is-active {
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	overflow: hidden;
+}
+
 .panel-toolbar {
 	padding: 12px;
 }
@@ -595,6 +634,72 @@ button {
 .linktree-list,
 .calendar-panel {
 	padding: 8px;
+}
+
+.panel-view[data-view="files"] .file-tree {
+	overflow: auto;
+	overscroll-behavior: none;
+}
+
+.vault-source-card {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	min-height: 56px;
+	margin: 8px 14px 14px;
+	padding: 7px 8px;
+	border: 1px solid var(--line);
+	border-radius: 11px;
+	background: var(--surface);
+}
+
+.vault-source-icon {
+	display: grid;
+	place-items: center;
+	flex: 0 0 34px;
+	width: 34px;
+	height: 34px;
+	border-radius: 8px;
+	background: var(--surface-muted);
+	color: var(--text-muted);
+	font-size: 13px;
+}
+
+.vault-source-copy {
+	display: grid;
+	flex: 1 1 auto;
+	min-width: 0;
+	gap: 3px;
+}
+
+.vault-source-label {
+	color: var(--text-muted);
+	font-size: 10px;
+	line-height: 1.25;
+}
+
+.vault-source-value {
+	overflow: hidden;
+	color: var(--text);
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vault-source-card .icon-button {
+	flex: 0 0 auto;
+	width: 30px;
+	height: 30px;
+	color: var(--text-muted);
+	font-size: 12px;
+}
+
+.vault-source-card .icon-button:hover {
+	background: var(--surface);
+	color: var(--text);
 }
 
 .search-results {
@@ -2679,6 +2784,7 @@ button {
 .page-load-logo {
 	width: min(168px, 34vw);
 	height: auto;
+	filter: invert(1);
 	opacity: 0;
 	transform: scale(0.98);
 	transition:

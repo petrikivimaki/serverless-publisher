@@ -6,7 +6,7 @@ tags: papyrus, interface, appearance
 
 # Interface and Reading Controls
 
-Papyrus uses a three-part reading shell: a primary menu for browsing the vault, a central reading workspace, and a secondary menu for the active note's context. Both side menus are optional, so the article can use the entire window when they are closed.
+Papyrus uses a three-part reading shell: a primary menu for browsing the vault, a central reading workspace, and a secondary menu for the active note's context. Both side menus are optional, so the article can use the entire window when they are closed. The primary menu header presents the sample monochrome, calligraphic Papyrus mark first, followed by the configured site title and the menu close action. The black master mark remains black in Light and Sand, then inverts to white in Dark and Ocean.
 
 The shell always matches the visible browser viewport and does not scroll as a single page. The article and each side-menu content region scroll independently only when their own content exceeds the available height. Reaching an internal scroll boundary does not pass wheel movement to the shell or create a viewport bounce. The initial HTML uses the same collapsed menu state as the runtime, so config and vault loading cannot briefly reveal either side menu during the first paint or a page refresh.
 
@@ -16,7 +16,7 @@ Open articles show a thin reading-progress line along the top of the central wor
 
 The floating navigation stays centered at the bottom of the window. On wide screens it shows icons and labels; on narrower screens it keeps the same actions and collapses to icons.
 
-Temporary event feedback, including vault load counts, copy confirmations, bookmark changes, and errors, appears in a full-length status row attached to the top of the floating navigation. The row is consistently narrower than the navigation regardless of message length. It slides out from behind the navigation, remains visible briefly, and then retracts into it; readers who prefer reduced motion receive the same updates without the transition. A running focus timer uses this same row persistently. Temporary feedback can replace the countdown briefly, then the timer returns without losing time.
+Temporary event feedback, including vault load counts, copy confirmations, bookmark changes, and errors, appears in a full-length status row attached to the top of the floating navigation. After a vault loads, the message identifies its source as either the local vault or the configured `owner/repository` on GitHub. The row is consistently narrower than the navigation regardless of message length. It slides out from behind the navigation, remains visible briefly, and then retracts into it; readers who prefer reduced motion receive the same updates without the transition. A running focus timer uses this same row persistently. Temporary feedback can replace the countdown briefly, then the timer returns without losing time.
 
 - **Home** returns to the dedicated front page.
 - **Library** opens or closes the primary menu on the file tree.
@@ -25,7 +25,7 @@ Temporary event feedback, including vault load counts, copy confirmations, bookm
 - **Details** opens or closes the secondary menu for the current note.
 - **Settings** opens the compact appearance popover anchored above the navigation.
 
-The primary menu's tab strip also exposes Calendar, Bookmarks, Graph, and Links without requiring a permanent tool rail. Its shared active indicator slides between view buttons, while reduced-motion preferences keep the state change immediate. The Links view is a configurable compact profile with grouped links and local clocks; see [[reference/linktree]] for its card model and automatic service icons. The Library view keeps the vault tree focused on browsing: its **Vault** row reports the note count and provides icon controls to open or close every folder, without duplicating the full-vault search field.
+The primary menu's tab strip also exposes Calendar, Bookmarks, Graph, and Links without requiring a permanent tool rail. Its shared active indicator slides between view buttons, while reduced-motion preferences keep the state change immediate. The Links view is a configurable compact profile with grouped links and local clocks; see [[reference/linktree]] for its card model and automatic service icons. The Library view keeps the vault tree focused on browsing: its **Vault** row reports the note count and provides icon controls to open or close every folder, without duplicating the full-vault search field. A subtle, Linktree-style card anchored below the tree identifies the **Local vault** or configured GitHub repository and keeps the content refresh action close to that source context. The card uses the same background as the primary menu and appears only in the Library view, leaving the primary header dedicated to the configured site title and menu close action.
 
 The Search view uses a single **Search everything...** field to match titles, paths, tags, and note text. Before a query is entered, the search scope appears in the same soft card treatment used for the selected result. The first result is selected as the query changes; **Up Arrow** and **Down Arrow** move that selection, and **Enter** opens it while keyboard focus remains in the search field.
 
