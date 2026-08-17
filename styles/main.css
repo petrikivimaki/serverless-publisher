@@ -2318,32 +2318,212 @@ button {
 
 .linktree-list {
 	display: grid;
-	gap: 6px;
+	align-content: start;
+	gap: 20px;
+	padding: 12px 14px 24px;
+}
+
+.linktree-intro {
+	display: grid;
+	gap: 7px;
+	padding: 7px 4px 1px;
+	text-align: left;
+}
+
+.linktree-intro h2 {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	line-height: 1.2;
+	text-transform: uppercase;
+}
+
+.linktree-intro p {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.55;
+}
+
+.linktree-group {
+	display: grid;
+	gap: 8px;
+}
+
+.linktree-group + .linktree-group.is-untitled {
+	position: relative;
+	margin-top: 19px;
+}
+
+.linktree-group + .linktree-group.is-untitled::before {
+	position: absolute;
+	top: -19.5px;
+	right: 0;
+	left: 0;
+	transform: translateY(-50%);
+	color: var(--text-muted);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	line-height: 1;
+	text-align: center;
+	content: "• • •";
+}
+
+.linktree-group h3 {
+	margin: 0 4px;
+	color: var(--text-muted);
+	font-size: 10px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+
+.linktree-cards {
+	display: grid;
+	gap: 7px;
+}
+
+.linktree-card {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	min-height: 56px;
+	padding: 7px 9px;
+	border: 1px solid var(--line);
+	border-radius: 11px;
+	background: var(--surface);
+	color: var(--text);
+	transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
 }
 
 .linktree-link {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	min-height: 38px;
-	padding: 8px 10px;
-	border: 1px solid var(--line);
-	border-radius: 7px;
-	background: var(--surface);
-	color: var(--text);
-	font-size: 13px;
-	font-weight: 700;
 	text-decoration: none;
 }
 
-.linktree-link:hover {
+.linktree-link:hover,
+.linktree-link:focus-visible {
+	border-color: var(--line-strong);
 	background: var(--surface-muted);
+	color: var(--text);
+	transform: translateY(-1px);
 }
 
-.linktree-link i {
-	width: 16px;
+.linktree-card-icon {
+	display: grid;
+	place-items: center;
+	flex: 0 0 38px;
+	width: 38px;
+	height: 38px;
+	border-radius: 9px;
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-size: 15px;
+}
+
+.linktree-card-copy {
+	display: grid;
+	flex: 1 1 auto;
+	gap: 3px;
+	min-width: 0;
+}
+
+.linktree-card-copy strong,
+.linktree-card-copy time {
+	overflow: hidden;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.linktree-card-copy span {
+	overflow: hidden;
 	color: var(--text-muted);
+	font-size: 10px;
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.linktree-external-icon {
+	flex: 0 0 auto;
+	margin-right: 2px;
+	color: var(--text-muted);
+	font-size: 9px;
+	opacity: 0.8;
+}
+
+.linktree-clock.is-invalid {
+	border-color: var(--danger);
+}
+
+.linktree-clock.is-invalid .linktree-card-icon,
+.linktree-clock.is-invalid time {
+	color: var(--danger);
+}
+
+.linktree-empty {
+	margin: 0;
+	padding: 18px 4px;
 	text-align: center;
+}
+
+.linktree-link[data-service="email"] .linktree-card-icon,
+.linktree-link[data-service="whatsapp"] .linktree-card-icon {
+	background: rgb(37,160,96,0.12);
+	color: rgb(35,125,79);
+}
+
+.linktree-link[data-service="youtube"] .linktree-card-icon {
+	background: rgb(255,0,0,0.1);
+	color: rgb(210,30,38);
+}
+
+.linktree-link[data-service="linkedin"] .linktree-card-icon,
+.linktree-link[data-service="facebook"] .linktree-card-icon,
+.linktree-link[data-service="telegram"] .linktree-card-icon {
+	background: rgb(10,102,194,0.11);
+	color: rgb(15,96,164);
+}
+
+.linktree-link[data-service="bluesky"] .linktree-card-icon {
+	background: rgb(0,133,255,0.11);
+	color: rgb(0,112,219);
+}
+
+.linktree-link[data-service="discord"] .linktree-card-icon,
+.linktree-link[data-service="twitch"] .linktree-card-icon {
+	background: rgb(88,101,242,0.12);
+	color: rgb(91,84,190);
+}
+
+.linktree-link[data-service="instagram"] .linktree-card-icon,
+.linktree-link[data-service="dribbble"] .linktree-card-icon {
+	background: rgb(214,41,118,0.11);
+	color: rgb(190,42,104);
+}
+
+.linktree-link[data-service="spotify"] .linktree-card-icon {
+	background: rgb(30,215,96,0.12);
+	color: rgb(27,139,69);
+}
+
+.linktree-link[data-service="soundcloud"] .linktree-card-icon,
+.linktree-link[data-service="patreon"] .linktree-card-icon,
+.linktree-link[data-service="gitlab"] .linktree-card-icon {
+	background: rgb(244,95,45,0.12);
+	color: rgb(196,75,35);
+}
+
+.linktree-link[data-service="reddit"] .linktree-card-icon,
+.linktree-link[data-service="pinterest"] .linktree-card-icon {
+	background: rgb(229,57,53,0.11);
+	color: rgb(190,52,48);
 }
 
 .toc-list {
@@ -2839,6 +3019,15 @@ input:focus-visible {
 @media (prefers-reduced-motion: reduce) {
 	.navigation-status {
 		transition: none;
+	}
+
+	.linktree-card {
+		transition: none;
+	}
+
+	.linktree-link:hover,
+	.linktree-link:focus-visible {
+		transform: none;
 	}
 
 	.panel-tabs::before {

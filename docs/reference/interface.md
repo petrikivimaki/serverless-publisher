@@ -25,7 +25,7 @@ Temporary event feedback, including vault load counts, copy confirmations, bookm
 - **Details** opens or closes the secondary menu for the current note.
 - **Settings** opens the compact appearance popover anchored above the navigation.
 
-The primary menu's tab strip also exposes Calendar, Bookmarks, Graph, and Links without requiring a permanent tool rail. Its shared active indicator slides between view buttons, while reduced-motion preferences keep the state change immediate. The Library view keeps the vault tree focused on browsing: its **Vault** row reports the note count and provides icon controls to open or close every folder, without duplicating the full-vault search field.
+The primary menu's tab strip also exposes Calendar, Bookmarks, Graph, and Links without requiring a permanent tool rail. Its shared active indicator slides between view buttons, while reduced-motion preferences keep the state change immediate. The Links view is a configurable compact profile with grouped links and local clocks; see [[reference/linktree]] for its card model and automatic service icons. The Library view keeps the vault tree focused on browsing: its **Vault** row reports the note count and provides icon controls to open or close every folder, without duplicating the full-vault search field.
 
 The Search view uses a single **Search everything...** field to match titles, paths, tags, and note text. Before a query is entered, the search scope appears in the same soft card treatment used for the selected result. The first result is selected as the query changes; **Up Arrow** and **Down Arrow** move that selection, and **Enter** opens it while keyboard focus remains in the search field.
 

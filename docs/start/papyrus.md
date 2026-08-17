@@ -15,6 +15,7 @@ The app provides:
 - Wiki links and backlinks
 - Frontmatter metadata
 - Bookmarks stored in the browser
+- A configurable Linktree profile with grouped links and local clocks
 - Reader controls, themes, table of contents, and share links
 
 Papyrus does not replace your editor. It publishes the files you already write.

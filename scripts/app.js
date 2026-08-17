@@ -29,6 +29,7 @@ const state = {
 	fontFamily: "modern",
 	fontSize: 18,
 	lineHeight: 1.68,
+	linktreeClockInterval: 0,
 	leftCollapsed: true,
 	focusTimerDurationMinutes: 5,
 	focusTimerEndsAt: 0,
@@ -67,6 +68,47 @@ const swotPropertyNames = ["strengths", "weaknesses", "opportunities", "threats"
 const ptePropertyNames = ["label", "elements"];
 const defaultPeriodicTableLinkTemplate = "https://pubchem.ncbi.nlm.nih.gov/element/{Z}";
 const defaultPeriodicTableLinkLabel = "PubChem";
+const linktreeServices = [
+	{
+		id: "amazon",
+		icon: "fa-brands fa-amazon",
+		domains: ["amazon.com", "amazon.ca", "amazon.co.uk", "amazon.de", "amazon.fr", "amazon.it", "amazon.es", "amazon.nl", "amazon.pl", "amazon.se", "amazon.com.au", "amazon.co.jp", "amazon.in", "amazon.com.br", "amazon.com.mx", "amazon.sg", "amazon.ae", "amazon.sa", "amzn.to"]
+	},
+	{ id: "behance", icon: "fa-brands fa-behance", domains: ["behance.net"] },
+	{ id: "bluesky", icon: "fa-brands fa-bluesky", domains: ["bsky.app", "bluesky.app"] },
+	{ id: "codepen", icon: "fa-brands fa-codepen", domains: ["codepen.io"] },
+	{ id: "discord", icon: "fa-brands fa-discord", domains: ["discord.com", "discord.gg"] },
+	{ id: "dribbble", icon: "fa-brands fa-dribbble", domains: ["dribbble.com"] },
+	{ id: "facebook", icon: "fa-brands fa-facebook-f", domains: ["facebook.com", "fb.com", "fb.me", "messenger.com"] },
+	{ id: "flickr", icon: "fa-brands fa-flickr", domains: ["flickr.com"] },
+	{ id: "github", icon: "fa-brands fa-github", domains: ["github.com"] },
+	{ id: "gitlab", icon: "fa-brands fa-gitlab", domains: ["gitlab.com"] },
+	{ id: "instagram", icon: "fa-brands fa-instagram", domains: ["instagram.com", "instagr.am"] },
+	{ id: "linkedin", icon: "fa-brands fa-linkedin-in", domains: ["linkedin.com", "lnkd.in"] },
+	{ id: "mastodon", icon: "fa-brands fa-mastodon", domains: ["mastodon.social", "mastodon.online", "fosstodon.org", "hachyderm.io"] },
+	{ id: "medium", icon: "fa-brands fa-medium", domains: ["medium.com"] },
+	{ id: "npm", icon: "fa-brands fa-npm", domains: ["npmjs.com", "npmjs.org", "npm.im"] },
+	{ id: "patreon", icon: "fa-brands fa-patreon", domains: ["patreon.com"] },
+	{ id: "pinterest", icon: "fa-brands fa-pinterest-p", domains: ["pinterest.com", "pin.it"] },
+	{ id: "producthunt", icon: "fa-brands fa-product-hunt", domains: ["producthunt.com"] },
+	{ id: "reddit", icon: "fa-brands fa-reddit-alien", domains: ["reddit.com"] },
+	{ id: "slack", icon: "fa-brands fa-slack", domains: ["slack.com"] },
+	{ id: "snapchat", icon: "fa-brands fa-snapchat", domains: ["snapchat.com"] },
+	{ id: "soundcloud", icon: "fa-brands fa-soundcloud", domains: ["soundcloud.com"] },
+	{ id: "spotify", icon: "fa-brands fa-spotify", domains: ["spotify.com"] },
+	{ id: "substack", icon: "fa-regular fa-newspaper", domains: ["substack.com"] },
+	{ id: "telegram", icon: "fa-brands fa-telegram", domains: ["t.me", "telegram.me"] },
+	{ id: "threads", icon: "fa-brands fa-threads", domains: ["threads.net"] },
+	{ id: "tiktok", icon: "fa-brands fa-tiktok", domains: ["tiktok.com"] },
+	{ id: "tumblr", icon: "fa-brands fa-tumblr", domains: ["tumblr.com"] },
+	{ id: "twitch", icon: "fa-brands fa-twitch", domains: ["twitch.tv"] },
+	{ id: "vimeo", icon: "fa-brands fa-vimeo-v", domains: ["vimeo.com"] },
+	{ id: "whatsapp", icon: "fa-brands fa-whatsapp", domains: ["wa.me", "whatsapp.com"] },
+	{ id: "wikipedia", icon: "fa-brands fa-wikipedia-w", domains: ["wikipedia.org"] },
+	{ id: "wordpress", icon: "fa-brands fa-wordpress", domains: ["wordpress.com", "wordpress.org", "wp.com"] },
+	{ id: "x", icon: "fa-brands fa-x-twitter", domains: ["x.com", "twitter.com", "t.co"] },
+	{ id: "youtube", icon: "fa-brands fa-youtube", domains: ["youtube.com", "youtube-nocookie.com", "youtu.be"] }
+];
 const calloutTypes = {
 	note: { title: "Note" },
 	abstract: { title: "Abstract" },
@@ -989,95 +1031,286 @@ function getBookmarkedNotes() {
 }
 
 /**
- * Renders configured Linktree links.
+ * Renders the configured Linktree profile, groups, and cards.
  * @returns {void}
  */
 function renderLinktree() {
 	const container = select(selectors.linktreeList);
-	const links = Array.isArray(state.config.linktree?.links) ? state.config.linktree.links : [];
+	const config = state.config.linktree || {};
+	const groups = Array.isArray(config.groups) ? config.groups : [];
+	const fragment = document.createDocumentFragment();
 
+	window.clearInterval(state.linktreeClockInterval);
+	state.linktreeClockInterval = 0;
 	container.replaceChildren();
 
-	if (!links.length) {
-		container.innerHTML = `<p class="muted">No links configured.</p>`;
+	if (config.title || config.subtitle) {
+		fragment.append(createLinktreeIntro({ config }));
+	}
+
+	for (let index = 0; index < groups.length; index += 1) {
+		const group = createLinktreeGroup({ group: groups[index] });
+
+		if (group) {
+			fragment.append(group);
+		}
+	}
+
+	container.append(fragment);
+
+	if (!container.querySelector(".linktree-card")) {
+		const message = document.createElement("p");
+		message.className = "muted linktree-empty";
+		message.textContent = "No cards configured.";
+		container.append(message);
 		return;
 	}
 
-	for (let index = 0; index < links.length; index += 1) {
-		container.append(createLinktreeLink({ link: links[index] }));
-	}
+	startLinktreeClocks();
 }
 
 /**
- * Creates a Linktree link.
+ * Creates the optional Linktree profile introduction.
+ * @param {object} params
+ * @param {object} params.config
+ * @returns {HTMLElement}
+ */
+function createLinktreeIntro({ config }) {
+	const intro = document.createElement("header");
+	const title = String(config.title || "").trim();
+	const subtitle = String(config.subtitle || "").trim();
+
+	intro.className = "linktree-intro";
+	intro.innerHTML = `
+		${title ? `<h2>${escapeHtml(title)}</h2>` : ""}
+		${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
+	`;
+
+	return intro;
+}
+
+/**
+ * Creates a titled or untitled Linktree card group.
+ * @param {object} params
+ * @param {object} params.group
+ * @returns {HTMLElement|null}
+ */
+function createLinktreeGroup({ group }) {
+	const cards = Array.isArray(group.cards) ? group.cards : [];
+	const section = document.createElement("section");
+	const cardList = document.createElement("div");
+	const title = String(group.title || "").trim();
+
+	if (!cards.length) {
+		return null;
+	}
+
+	section.className = title ? "linktree-group" : "linktree-group is-untitled";
+	cardList.className = "linktree-cards";
+
+	if (title) {
+		const heading = document.createElement("h3");
+		heading.textContent = title;
+		section.append(heading);
+	}
+
+	for (let index = 0; index < cards.length; index += 1) {
+		const card = createLinktreeCard({ card: cards[index] });
+
+		if (card) {
+			cardList.append(card);
+		}
+	}
+
+	if (!cardList.childElementCount) {
+		return null;
+	}
+
+	section.append(cardList);
+	return section;
+}
+
+/**
+ * Creates a configured Linktree card.
+ * @param {object} params
+ * @param {object} params.card
+ * @returns {HTMLElement|null}
+ */
+function createLinktreeCard({ card }) {
+	if (card.timeZone) {
+		return createLinktreeClock({ clock: card });
+	}
+
+	if (card.url) {
+		return createLinktreeLink({ link: card });
+	}
+
+	return null;
+}
+
+/**
+ * Creates a Linktree link with a domain-derived service icon.
  * @param {object} params
  * @param {object} params.link
  * @returns {HTMLAnchorElement}
  */
 function createLinktreeLink({ link }) {
 	const anchor = document.createElement("a");
-	const type = normalizeLinkType(String(link.type || ""));
-	const icon = getLinktreeIcon({ type });
-	const label = String(link.label || "Link");
-	const href = String(link.url || "#");
+	const label = String(link.label || "Link").trim() || "Link";
+	const description = String(link.description || "").trim();
+	const href = getLinktreeHref({ url: String(link.url || "") });
+	const service = getLinktreeService({ href });
+	const icon = getLinktreeCardIcon({ icon: link.icon, fallback: service.icon });
 
-	anchor.className = "linktree-link";
+	anchor.className = "linktree-card linktree-link";
+	anchor.dataset.service = service.id;
 	anchor.href = getExternalLinkHref({ href });
 	anchor.target = "_blank";
 	anchor.rel = "noreferrer";
+	anchor.setAttribute("aria-label", `${label} (opens in a new tab)`);
 	anchor.innerHTML = `
-		<i class="${escapeAttribute(icon)}" aria-hidden="true"></i>
-		<span>${escapeHtml(label)}</span>
+		<span class="linktree-card-icon" aria-hidden="true"><i class="${escapeAttribute(icon)}"></i></span>
+		<span class="linktree-card-copy">
+			<strong>${escapeHtml(label)}</strong>
+			${description ? `<span>${escapeHtml(description)}</span>` : ""}
+		</span>
+		<i class="fa-solid fa-arrow-up-right-from-square linktree-external-icon" aria-hidden="true"></i>
 	`;
 
 	return anchor;
 }
 
 /**
- * Normalizes a Linktree type.
- * @param {string} type
- * @returns {string}
+ * Creates a ticking clock card for an IANA timezone.
+ * @param {object} params
+ * @param {object} params.clock
+ * @returns {HTMLElement}
  */
-function normalizeLinkType(type) {
-	return type.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+function createLinktreeClock({ clock }) {
+	const card = document.createElement("div");
+	const label = String(clock.label || "").trim();
+	const timeZone = String(clock.timeZone || "").trim();
+	const icon = getLinktreeCardIcon({ icon: clock.icon, fallback: "fa-regular fa-clock" });
+
+	card.className = "linktree-card linktree-clock";
+	card.dataset.linktreeClock = "";
+	card.dataset.timeZone = timeZone;
+	card.setAttribute("role", "timer");
+	card.setAttribute("aria-label", label ? `Current time in ${label}` : `Current time in ${timeZone}`);
+	card.innerHTML = `
+		<span class="linktree-card-icon" aria-hidden="true"><i class="${escapeAttribute(icon)}"></i></span>
+		<span class="linktree-card-copy">
+			<time data-linktree-clock-time>--:--:--</time>
+			${label ? `<span>${escapeHtml(label)}</span>` : ""}
+		</span>
+	`;
+
+	return card;
 }
 
 /**
- * Gets a Font Awesome icon class for a Linktree type.
+ * Gets a configured Font Awesome icon or its automatic fallback.
  * @param {object} params
- * @param {string} params.type
+ * @param {unknown} params.icon
+ * @param {string} params.fallback
  * @returns {string}
  */
-function getLinktreeIcon({ type }) {
-	const icons = {
-		bluesky: "fa-brands fa-bluesky",
-		discord: "fa-brands fa-discord",
-		email: "fa-regular fa-envelope",
-		facebook: "fa-brands fa-facebook",
-		github: "fa-brands fa-github",
-		gitlab: "fa-brands fa-gitlab",
-		instagram: "fa-brands fa-instagram",
-		linkedin: "fa-brands fa-linkedin",
-		mastodon: "fa-brands fa-mastodon",
-		medium: "fa-brands fa-medium",
-		newsletter: "fa-regular fa-envelope",
-		patreon: "fa-brands fa-patreon",
-		reddit: "fa-brands fa-reddit",
-		rss: "fa-solid fa-rss",
-		soundcloud: "fa-brands fa-soundcloud",
-		spotify: "fa-brands fa-spotify",
-		substack: "fa-regular fa-newspaper",
-		telegram: "fa-brands fa-telegram",
-		threads: "fa-brands fa-threads",
-		tiktok: "fa-brands fa-tiktok",
-		twitch: "fa-brands fa-twitch",
-		website: "fa-solid fa-globe",
-		x: "fa-brands fa-x-twitter",
-		twitter: "fa-brands fa-x-twitter",
-		youtube: "fa-brands fa-youtube"
-	};
+function getLinktreeCardIcon({ icon, fallback }) {
+	return String(icon || "").trim() || fallback;
+}
 
-	return icons[type] || "fa-solid fa-link";
+/**
+ * Starts the Linktree clock updates when clock cards are present.
+ * @returns {void}
+ */
+function startLinktreeClocks() {
+	const clocks = selectAll("[data-linktree-clock]");
+
+	if (!clocks.length) {
+		return;
+	}
+
+	updateLinktreeClocks();
+	state.linktreeClockInterval = window.setInterval(updateLinktreeClocks, 1000);
+}
+
+/**
+ * Updates all rendered Linktree clocks.
+ * @returns {void}
+ */
+function updateLinktreeClocks() {
+	const clocks = selectAll("[data-linktree-clock]");
+	const formatters = new Map();
+	const now = new Date();
+
+	for (let index = 0; index < clocks.length; index += 1) {
+		const clock = clocks[index];
+		const time = clock.querySelector("[data-linktree-clock-time]");
+		const timeZone = clock.dataset.timeZone || "";
+
+		try {
+			if (!formatters.has(timeZone)) {
+				formatters.set(timeZone, new Intl.DateTimeFormat(undefined, {
+					hour: "2-digit",
+					minute: "2-digit",
+					second: "2-digit",
+					timeZone
+				}));
+			}
+
+			time.textContent = formatters.get(timeZone).format(now);
+			time.dateTime = now.toISOString();
+			clock.classList.remove("is-invalid");
+		} catch (error) {
+			time.textContent = "Invalid timezone";
+			clock.classList.add("is-invalid");
+		}
+	}
+}
+
+/**
+ * Normalizes plain email addresses to mailto links.
+ * @param {object} params
+ * @param {string} params.url
+ * @returns {string}
+ */
+function getLinktreeHref({ url }) {
+	const href = url.trim();
+	const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(href);
+
+	return isEmail ? `mailto:${href}` : href;
+}
+
+/**
+ * Gets a service ID and Font Awesome icon from a link destination.
+ * @param {object} params
+ * @param {string} params.href
+ * @returns {{id: string, icon: string}}
+ */
+function getLinktreeService({ href }) {
+	if (href.toLowerCase().startsWith("mailto:")) {
+		return { id: "email", icon: "fa-regular fa-envelope" };
+	}
+
+	try {
+		const hostname = new URL(href, window.location.href).hostname.toLowerCase().replace(/^www\./, "");
+
+		for (let serviceIndex = 0; serviceIndex < linktreeServices.length; serviceIndex += 1) {
+			const service = linktreeServices[serviceIndex];
+
+			for (let domainIndex = 0; domainIndex < service.domains.length; domainIndex += 1) {
+				const domain = service.domains[domainIndex];
+
+				if (hostname === domain || hostname.endsWith(`.${domain}`)) {
+					return { id: service.id, icon: service.icon };
+				}
+			}
+		}
+	} catch (error) {
+		return { id: "neutral", icon: "fa-solid fa-link" };
+	}
+
+	return { id: "neutral", icon: "fa-solid fa-link" };
 }
 
 /**

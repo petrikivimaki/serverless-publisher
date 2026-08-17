@@ -13,6 +13,7 @@
 		"reference/extensions/callouts.md",
 		"reference/extensions/mermaid.md",
 		"reference/extensions/papyrus-components.md",
-		"reference/interface.md"
+		"reference/interface.md",
+		"reference/linktree.md"
 	]
 }

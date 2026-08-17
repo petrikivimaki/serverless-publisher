@@ -76,21 +76,57 @@
     "rootPath": ""
   },
   "linktree": {
-    "links": [
+    "title": "Around Papyrus",
+    "subtitle": "Project links, community spaces, and ways to get in touch.",
+    "groups": [
       {
-        "label": "GitHub",
-        "type": "github",
-        "url": "https://github.com/"
+        "title": "Project",
+        "cards": [
+          {
+            "label": "GitHub",
+            "description": "Source code, issues, and release history",
+            "url": "https://github.com/petrikivimaki/papyrus"
+          },
+          {
+            "label": "Papyrus documentation",
+            "description": "Guides for publishing a Markdown vault",
+            "icon": "fa-solid fa-book-open",
+            "url": "https://petrikivimaki.github.io/papyrus/"
+          }
+        ]
       },
       {
-        "label": "YouTube",
-        "type": "youtube",
-        "url": "https://youtube.com/"
+        "title": "Community",
+        "cards": [
+          {
+            "label": "YouTube",
+            "description": "Walkthroughs and project updates",
+            "url": "https://youtube.com/"
+          },
+          {
+            "label": "Discord",
+            "description": "Conversation with the community",
+            "url": "https://discord.com/"
+          }
+        ]
       },
       {
-        "label": "Discord",
-        "type": "discord",
-        "url": "https://discord.com/"
+        "title": "Contact",
+        "cards": [
+          {
+            "label": "Email",
+            "description": "Questions and collaborations",
+            "url": "hello@example.com"
+          }
+        ]
+      },
+      {
+        "cards": [
+          {
+            "label": "Helsinki",
+            "timeZone": "Europe/Helsinki"
+          }
+        ]
       }
     ]
   },

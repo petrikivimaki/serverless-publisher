@@ -72,31 +72,67 @@
 		"rootPath": ""
 	},
 	"linktree": {
-		"links": [
+		"title": "Around the web",
+		"subtitle": "Social profiles, current projects, and the best places to continue the conversation.",
+		"groups": [
 			{
-				"label": "YouTube",
-				"type": "youtube",
-				"url": "https://youtube.com/@your-channel"
+				"title": "Social",
+				"cards": [
+					{
+						"label": "GitHub",
+						"description": "Repositories and open-source work",
+						"url": "https://github.com/your-profile"
+					},
+					{
+						"label": "LinkedIn",
+						"description": "Professional notes and updates",
+						"url": "https://linkedin.com/in/your-profile"
+					},
+					{
+						"label": "Bluesky",
+						"description": "Short observations and new links",
+						"url": "https://bsky.app/profile/your-profile"
+					},
+					{
+						"label": "YouTube",
+						"description": "Talks, walkthroughs, and recordings",
+						"url": "https://youtube.com/@your-channel"
+					}
+				]
 			},
 			{
-				"label": "Instagram",
-				"type": "instagram",
-				"url": "https://instagram.com/your-profile"
+				"title": "Projects",
+				"cards": [
+					{
+						"label": "Project documentation",
+						"description": "Guides and release notes",
+						"url": "https://example.com/docs"
+					},
+					{
+						"label": "Experimental atlas",
+						"description": "A group or company project can live here too",
+						"icon": "fa-solid fa-map-location-dot",
+						"url": "https://example.org"
+					}
+				]
 			},
 			{
-				"label": "X",
-				"type": "x",
-				"url": "https://x.com/your-profile"
+				"title": "Contact",
+				"cards": [
+					{
+						"label": "Email",
+						"description": "For questions and collaborations",
+						"url": "hello@example.com"
+					}
+				]
 			},
 			{
-				"label": "Discord",
-				"type": "discord",
-				"url": "https://discord.gg/your-invite"
-			},
-			{
-				"label": "Website",
-				"type": "website",
-				"url": "https://example.com"
+				"cards": [
+					{
+						"label": "Helsinki",
+						"timeZone": "Europe/Helsinki"
+					}
+				]
 			}
 		]
 	},
