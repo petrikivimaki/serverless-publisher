@@ -12,7 +12,7 @@ Papyrus supports standard Markdown, familiar Obsidian conventions, and a small s
 ## Obsidian conventions
 
 - [[reference/extensions/frontmatter|Frontmatter properties]] covers every built-in property, custom metadata, value shapes, and reader-panel configuration.
-- [[reference/extensions/obsidian-syntax|Obsidian syntax and note features]] covers wiki links, Markdown note links, source comments, and math.
+- [[reference/extensions/obsidian-syntax|Obsidian syntax and note features]] covers wiki links, Markdown note links, source comments, footnotes, and math.
 - [[reference/extensions/callouts|Obsidian callouts]] documents every type, alias, color, nesting behavior, and fold state.
 - [[reference/extensions/mermaid|Mermaid diagrams]] covers diagram fences, theme-aware rendering, and vault navigation from diagram nodes.
 

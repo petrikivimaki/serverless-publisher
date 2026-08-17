@@ -12,6 +12,7 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 - Markdown file tree with expandable folders
 - Wiki links, backlinks, and outgoing link lists
 - Obsidian `%%` source comments hidden from rendered articles and indexes
+- Obsidian inline and referenced footnotes with linked return navigation
 - Standard Markdown blockquotes and typed, foldable Obsidian callouts
 - Full-vault search over titles, paths, tags, and body text
 - Browser-local bookmarks using `localStorage`

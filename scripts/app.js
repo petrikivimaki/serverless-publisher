@@ -2871,7 +2871,9 @@ function extractHeadings({ markdown }) {
 		const match = line.match(/^(#{1,6})\s+(.+?)\s*#*$/);
 
 		if (match) {
-			const title = stripMarkdown(match[2]).trim();
+			const title = stripMarkdown(match[2]
+				.replace(/\^\[[^\]]+\]/g, "")
+				.replace(/\[\^[^\]]+\]/g, "")).trim();
 			headings.push({
 				id: getUniqueSlug({ text: title, slugs }),
 				level: match[1].length,
@@ -3073,6 +3075,14 @@ function createLinkChip({ note }) {
  * @returns {void}
  */
 function handleArticleClick(event) {
+	const footnoteLink = event.target.closest("[data-footnote-target]");
+
+	if (footnoteLink) {
+		event.preventDefault();
+		scrollToFootnoteTarget({ id: footnoteLink.dataset.footnoteTarget });
+		return;
+	}
+
 	const consoleCloseAction = event.target.closest("[data-action='close-code-console']");
 
 	if (consoleCloseAction) {
@@ -3137,6 +3147,23 @@ function handleArticleClick(event) {
 
 	event.preventDefault();
 	openNote({ path: link.dataset.noteTarget });
+}
+
+/**
+ * Scrolls to a footnote or one of its references without changing the note route.
+ * @param {object} params
+ * @param {string} params.id
+ * @returns {void}
+ */
+function scrollToFootnoteTarget({ id }) {
+	const target = document.getElementById(id);
+
+	if (!target || !select(selectors.article).contains(target)) {
+		return;
+	}
+
+	target.scrollIntoView({ block: "center", behavior: "smooth" });
+	target.focus({ preventScroll: true });
 }
 
 /**
@@ -3977,8 +4004,367 @@ function hideSelectionMenu() {
  */
 function renderMarkdown({ markdown }) {
 	const visibleMarkdown = stripObsidianComments({ markdown });
-	const html = marked.parse(replaceWikiLinks({ markdown: replaceComponentSyntax({ markdown: visibleMarkdown }) }));
+	const footnoteResult = replaceFootnoteSyntax({ markdown: visibleMarkdown });
+	const articleHtml = marked.parse(replaceWikiLinks({
+		markdown: replaceComponentSyntax({ markdown: footnoteResult.markdown })
+	}));
+	const html = `${articleHtml}${createFootnotesMarkup({ footnotes: footnoteResult.footnotes })}`;
 	return resolveRenderedLinks({ html });
+}
+
+/**
+ * Collects Obsidian-style footnotes and replaces their references with linked markers.
+ * @param {object} params
+ * @param {string} params.markdown
+ * @returns {{ markdown: string, footnotes: Array<object> }}
+ */
+function replaceFootnoteSyntax({ markdown }) {
+	const extracted = extractFootnoteDefinitions({ markdown });
+	const lines = extracted.markdown.split("\n");
+	const output = [];
+	const context = {
+		definitions: extracted.definitions,
+		footnotes: [],
+		namedFootnotes: new Map()
+	};
+	let inlineCodeLength = 0;
+	let fence = null;
+
+	for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+		const line = lines[lineIndex];
+
+		if (fence) {
+			output.push(line);
+
+			if (isClosingFenceLine({ line, marker: fence.marker, minimumLength: fence.length })) {
+				fence = null;
+			}
+
+			continue;
+		}
+
+		if (!inlineCodeLength) {
+			const opening = getFenceOpening(line);
+
+			if (opening) {
+				fence = opening;
+				output.push(line);
+				continue;
+			}
+		}
+
+		const result = replaceFootnoteReferencesFromLine({
+			lines,
+			lineIndex,
+			inlineCodeLength,
+			context
+		});
+
+		output.push(result.line);
+		inlineCodeLength = result.inlineCodeLength;
+	}
+
+	return { markdown: output.join("\n"), footnotes: context.footnotes };
+}
+
+/**
+ * Extracts named footnote definitions outside code into a lookup.
+ * @param {object} params
+ * @param {string} params.markdown
+ * @returns {{ markdown: string, definitions: Map<string, string> }}
+ */
+function extractFootnoteDefinitions({ markdown }) {
+	const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+	const definitions = new Map();
+	const output = [];
+	let inlineCodeLength = 0;
+	let fence = null;
+
+	for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+		const line = lines[lineIndex];
+
+		if (fence) {
+			output.push(line);
+
+			if (isClosingFenceLine({ line, marker: fence.marker, minimumLength: fence.length })) {
+				fence = null;
+			}
+
+			continue;
+		}
+
+		if (!inlineCodeLength) {
+			const opening = getFenceOpening(line);
+
+			if (opening) {
+				fence = opening;
+				output.push(line);
+				continue;
+			}
+
+			const definition = readFootnoteDefinition({ lines, lineIndex });
+
+			if (definition) {
+				if (!definitions.has(definition.label)) {
+					definitions.set(definition.label, definition.markdown);
+				}
+
+				output.push("");
+				lineIndex = definition.endIndex;
+				continue;
+			}
+		}
+
+		output.push(line);
+		inlineCodeLength = getInlineCodeLengthAfterLine({
+			lines,
+			lineIndex,
+			inlineCodeLength
+		});
+	}
+
+	return { markdown: output.join("\n"), definitions };
+}
+
+/**
+ * Reads one named footnote definition and its indented continuation lines.
+ * @param {object} params
+ * @param {Array<string>} params.lines
+ * @param {number} params.lineIndex
+ * @returns {object|null}
+ */
+function readFootnoteDefinition({ lines, lineIndex }) {
+	const match = lines[lineIndex].match(/^\[\^([^\]\s]+)\]:[ \t]*(.*)$/);
+
+	if (!match) {
+		return null;
+	}
+
+	const contentLines = [match[2]];
+	let endIndex = lineIndex;
+	let candidateIndex = lineIndex + 1;
+
+	while (candidateIndex < lines.length) {
+		const continuation = lines[candidateIndex].match(/^(?:\t| {2,4})(.*)$/);
+
+		if (continuation) {
+			contentLines.push(continuation[1]);
+			endIndex = candidateIndex;
+			candidateIndex += 1;
+			continue;
+		}
+
+		if (!lines[candidateIndex].trim()) {
+			let nextContentIndex = candidateIndex + 1;
+
+			while (nextContentIndex < lines.length && !lines[nextContentIndex].trim()) {
+				nextContentIndex += 1;
+			}
+
+			if (nextContentIndex < lines.length && /^(?:\t| {2,})/.test(lines[nextContentIndex])) {
+				while (candidateIndex < nextContentIndex) {
+					contentLines.push("");
+					candidateIndex += 1;
+				}
+
+				continue;
+			}
+		}
+
+		break;
+	}
+
+	return {
+		label: match[1],
+		markdown: contentLines.join("\n").trim(),
+		endIndex
+	};
+}
+
+/**
+ * Tracks inline-code state across one Markdown line.
+ * @param {object} params
+ * @param {Array<string>} params.lines
+ * @param {number} params.lineIndex
+ * @param {number} params.inlineCodeLength
+ * @returns {number}
+ */
+function getInlineCodeLengthAfterLine({ lines, lineIndex, inlineCodeLength }) {
+	const line = lines[lineIndex];
+	let index = 0;
+
+	while (index < line.length) {
+		if (line[index] !== "`") {
+			index += 1;
+			continue;
+		}
+
+		const runLength = countCharacterRun({ text: line, startIndex: index, character: "`" });
+
+		if (inlineCodeLength === runLength) {
+			inlineCodeLength = 0;
+		} else if (!inlineCodeLength && !isEscapedCharacter({ text: line, index }) && hasClosingInlineCodeRun({
+			lines,
+			lineIndex,
+			startIndex: index + runLength,
+			runLength
+		})) {
+			inlineCodeLength = runLength;
+		}
+
+		index += runLength;
+	}
+
+	return inlineCodeLength;
+}
+
+/**
+ * Replaces footnote syntax outside inline code on one line.
+ * @param {object} params
+ * @param {Array<string>} params.lines
+ * @param {number} params.lineIndex
+ * @param {number} params.inlineCodeLength
+ * @param {object} params.context
+ * @returns {{ line: string, inlineCodeLength: number }}
+ */
+function replaceFootnoteReferencesFromLine({ lines, lineIndex, inlineCodeLength, context }) {
+	const source = lines[lineIndex];
+	let output = "";
+	let index = 0;
+
+	while (index < source.length) {
+		if (source[index] === "`") {
+			const runLength = countCharacterRun({ text: source, startIndex: index, character: "`" });
+
+			output += source.slice(index, index + runLength);
+
+			if (inlineCodeLength === runLength) {
+				inlineCodeLength = 0;
+			} else if (!inlineCodeLength && !isEscapedCharacter({ text: source, index }) && hasClosingInlineCodeRun({
+				lines,
+				lineIndex,
+				startIndex: index + runLength,
+				runLength
+			})) {
+				inlineCodeLength = runLength;
+			}
+
+			index += runLength;
+			continue;
+		}
+
+		if (!inlineCodeLength && source.startsWith("^[", index) && !isEscapedCharacter({ text: source, index })) {
+			const closingIndex = findFootnoteClosingBracket({ text: source, startIndex: index + 2 });
+			const content = closingIndex < 0 ? "" : source.slice(index + 2, closingIndex).trim();
+
+			if (content) {
+				output += createFootnoteReferenceMarkup({ context, markdown: content });
+				index = closingIndex + 1;
+				continue;
+			}
+		}
+
+		if (!inlineCodeLength && source.startsWith("[^", index) && source[index - 1] !== "!" && !isEscapedCharacter({ text: source, index })) {
+			const closingIndex = findFootnoteClosingBracket({ text: source, startIndex: index + 2 });
+			const label = closingIndex < 0 ? "" : source.slice(index + 2, closingIndex);
+
+			if (label && context.definitions.has(label)) {
+				output += createFootnoteReferenceMarkup({
+					context,
+					label,
+					markdown: context.definitions.get(label)
+				});
+				index = closingIndex + 1;
+				continue;
+			}
+		}
+
+		output += source[index];
+		index += 1;
+	}
+
+	return { line: output, inlineCodeLength };
+}
+
+/**
+ * Finds the next unescaped closing bracket for footnote syntax.
+ * @param {object} params
+ * @param {string} params.text
+ * @param {number} params.startIndex
+ * @returns {number}
+ */
+function findFootnoteClosingBracket({ text, startIndex }) {
+	for (let index = startIndex; index < text.length; index += 1) {
+		if (text[index] === "]" && !isEscapedCharacter({ text, index })) {
+			return index;
+		}
+	}
+
+	return -1;
+}
+
+/**
+ * Registers a footnote and creates one linked superscript reference.
+ * @param {object} params
+ * @param {object} params.context
+ * @param {string} [params.label]
+ * @param {string} params.markdown
+ * @returns {string}
+ */
+function createFootnoteReferenceMarkup({ context, label = "", markdown }) {
+	let footnote = label ? context.namedFootnotes.get(label) : null;
+
+	if (!footnote) {
+		footnote = {
+			number: context.footnotes.length + 1,
+			markdown,
+			referenceIds: []
+		};
+		context.footnotes.push(footnote);
+
+		if (label) {
+			context.namedFootnotes.set(label, footnote);
+		}
+	}
+
+	const occurrence = footnote.referenceIds.length + 1;
+	const referenceId = `footnote-reference-${footnote.number}${occurrence > 1 ? `-${occurrence}` : ""}`;
+	const footnoteId = `footnote-${footnote.number}`;
+	footnote.referenceIds.push(referenceId);
+
+	return `<sup class="footnote-reference"><a id="${referenceId}" class="footnote-reference-link" href="#${footnoteId}" data-footnote-target="${footnoteId}" role="doc-noteref" aria-label="Go to footnote ${footnote.number}">${footnote.number}</a></sup>`;
+}
+
+/**
+ * Creates the collected footnote block appended to the rendered article.
+ * @param {object} params
+ * @param {Array<object>} params.footnotes
+ * @returns {string}
+ */
+function createFootnotesMarkup({ footnotes }) {
+	if (!footnotes.length) {
+		return "";
+	}
+
+	let items = "";
+
+	for (let index = 0; index < footnotes.length; index += 1) {
+		const footnote = footnotes[index];
+		const content = marked.parse(replaceWikiLinks({
+			markdown: replaceComponentSyntax({ markdown: footnote.markdown })
+		}));
+		let backlinks = "";
+
+		for (let referenceIndex = 0; referenceIndex < footnote.referenceIds.length; referenceIndex += 1) {
+			const referenceId = footnote.referenceIds[referenceIndex];
+			const occurrenceLabel = referenceIndex ? `, occurrence ${referenceIndex + 1}` : "";
+			backlinks += `<a class="footnote-backlink" href="#${referenceId}" data-footnote-target="${referenceId}" role="doc-backlink" aria-label="Back to reference ${footnote.number}${occurrenceLabel}"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></a>`;
+		}
+
+		items += `<li id="footnote-${footnote.number}" class="footnote-item" tabindex="-1" role="doc-endnote"><span class="footnote-number" aria-hidden="true">${footnote.number}</span><div class="footnote-content">${content}</div><span class="footnote-backlinks">${backlinks}</span></li>`;
+	}
+
+	return `<section class="footnotes" role="doc-endnotes" aria-label="Footnotes"><ol role="list">${items}</ol></section>`;
 }
 
 /**
@@ -4986,7 +5372,14 @@ function addRenderedHeadingIds({ template }) {
 
 	for (let index = 0; index < headings.length; index += 1) {
 		const heading = headings[index];
-		const slug = getUniqueSlug({ text: heading.textContent || "section", slugs });
+		const headingCopy = heading.cloneNode(true);
+		const references = headingCopy.querySelectorAll(".footnote-reference");
+
+		for (let referenceIndex = 0; referenceIndex < references.length; referenceIndex += 1) {
+			references[referenceIndex].remove();
+		}
+
+		const slug = getUniqueSlug({ text: headingCopy.textContent || "section", slugs });
 		heading.id = slug;
 	}
 }
@@ -5564,11 +5957,14 @@ function stripMarkdown(text) {
 	return text
 		.replace(/^---[\s\S]*?---/, "")
 		.replace(/```[\s\S]*?```/g, "")
+		.replace(/^\[\^[^\]\s]+\]:[ \t]*/gm, "")
+		.replace(/\^\[([^\]]+)\]/g, "$1")
+		.replace(/\[\^[^\]\s]+\]/g, "")
 		.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
 		.replace(/\[\[([^\]]+)\]\]/g, "$1")
 		.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
 		.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
-		.replace(/[#>*_`-]/g, " ");
+		.replace(/[#>*_`^-]/g, " ");
 }
 
 /**

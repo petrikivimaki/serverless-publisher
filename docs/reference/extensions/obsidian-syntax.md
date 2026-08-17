@@ -1,7 +1,7 @@
 ---
 title: Obsidian Syntax and Note Features
 status: reference
-tags: obsidian, syntax, links, comments, math
+tags: obsidian, syntax, links, comments, footnotes, math
 license: CC BY 4.0
 ---
 
@@ -69,6 +69,48 @@ Comment markers inside inline and fenced code remain literal: `%%LITERAL_INLINE_
 ```md
 %% LITERAL_FENCED_CODE %%
 ```
+
+## Footnotes
+
+Papyrus collects Obsidian-style footnotes into a numbered block at the end of the article. Select a superscript number to scroll to its explanation; a compact circle marks the active footnote number. Select the upward arrow to return to the exact reference.
+
+Write an inline footnote directly beside the text it explains:
+
+```md
+Papyrus does not need a backend.^[All rendering and navigation happen in the browser.]
+```
+
+This sentence has an inline footnote.^[Inline footnotes are numbered automatically and moved to the article's footnote block.]
+
+For a referenced footnote, use a label at the reference point and define that label elsewhere in the same note. Labels are not displayed; numbering follows the order in which references first appear.
+
+```md
+The vault can be published as a static site.[^static-hosting]
+
+[^static-hosting]: GitHub Pages is one supported publishing target.
+```
+
+The same referenced footnote can be used more than once.[^shared-note] Reusing its label points to the same numbered explanation.[^shared-note]
+
+[^shared-note]: A repeated footnote includes a return control for every place where it was referenced. The explanation can also contain **Markdown formatting** and [[workflow/publish|internal links]].
+
+Indent continuation lines by at least two spaces to make a longer definition:
+
+```md
+Long explanations can span paragraphs.[^long-note]
+
+[^long-note]: The first line starts beside the definition label.
+
+  Indented lines continue the same footnote.
+```
+
+Here is the multi-paragraph form rendered in this note.[^long-example]
+
+[^long-example]: The definition begins on the label's line.
+
+  An indented paragraph remains part of the same explanation in the generated footnote block.
+
+Footnote-like text inside inline code and fenced code remains literal, so examples such as `^[inline example]`, `[^example]`, and `[^example]: definition` do not create footnotes.
 
 ## Math
 
