@@ -1,172 +1,58 @@
 # Papyrus
 
-Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It is shaped like a lightweight Obsidian-style reader: file tree, search, calendar, bookmarks, backlinks, article metadata, and Markdown rendering all run in the browser without a backend.
+Papyrus turns a directory of Markdown files into a public, Obsidian-style knowledge base. It is a client-side static app with no backend or build step, designed for hosting on services such as GitHub Pages.
+
+See an example deployment at [pmk.dev](https://pmk.dev).
 
 ## Features
 
-- Static HTML, CSS, and JavaScript
-- Manifest-based local and public GitHub content loading
-- Markdown rendering with Marked
-- Syntax highlighting with PrismJS and the Prism Tomorrow theme
-- Obsidian-compatible Mermaid diagrams with light and dark themes
-- Markdown file tree with expandable folders
-- Wiki links, backlinks, and outgoing link lists
-- Obsidian `%%` source comments hidden from rendered articles and indexes
-- Obsidian inline and referenced footnotes with linked return navigation
-- Standard Markdown blockquotes and typed, foldable Obsidian callouts
-- Startup search over manifest titles, paths, excerpts, and all frontmatter properties
-- Browser-local bookmarks using `localStorage`
-- Runtime-generated Cuelume interaction sounds with a saved on/off control
-- Calendar panel with configurable first day of week
-- Configurable home screen and startup animation
-- Fenced MapLibre map components with configurable markers and labels
-- Fenced market ticker cards with signed price-change styling and Google search links
-- Fenced periodic tables with selected-element highlighting and configurable reference links
-- Fenced four-quadrant SWOT analysis cards
-- GitHub Pages friendly deployment
+- Local vaults and content hosted in public GitHub repositories
+- Manifest-backed file browsing and full-metadata search
+- Wiki links, backlinks, bookmarks, a calendar, and a knowledge graph
+- Obsidian-compatible callouts, comments, footnotes, and Mermaid diagrams
+- Syntax highlighting, maps, market tickers, periodic tables, and SWOT cards
+- Configurable light and dark themes, home screen, metadata, navigation, and interaction sounds
+- Lazy, revision-pinned content loading for static hosting
 
-## Quick Start
+## Get started
 
-Start the dependency-free static development server:
+Clone the repository, enter its directory, and start the development server:
 
 ```sh
+git clone https://github.com/petrikivimaki/papyrus.git
+cd papyrus
 npm run dev
 ```
 
-Then open:
+Open [http://localhost:4242](http://localhost:4242) in a browser. No package installation is needed; the development command uses Python's built-in HTTP server. Opening `index.html` directly is not supported because the app loads configuration and content with `fetch()`.
 
-```text
-http://localhost:4242/
+The bundled `docs` directory is both the local demo vault and the full project guide. After changing its Markdown files, regenerate its content manifest:
+
+```sh
+npm run manifest
 ```
 
-Opening `index.html` directly may not work in every browser because the app loads JSON and markdown files with `fetch()`.
+## Configure content
 
-## Configuration
+Runtime settings live in [`config/app-config.json`](config/app-config.json). Use [`config/app-config.example.json`](config/app-config.example.json) as the complete configuration reference and [`config/app-config.schema.json`](config/app-config.schema.json) for validation.
 
-The active runtime config lives at:
+Papyrus can read the bundled local vault or load a Markdown vault from a public GitHub repository. Both sources use the same generated manifest format. Follow the [setup guide](docs/workflow/setup.md) to choose a source, then see [Content repository and manifest](docs/workflow/content-repository.md) for the remote repository layout and update workflow.
 
-```text
-config/app-config.json
-```
+## Documentation
 
-Use `config/app-config.example.json` as a reference for all available options. A JSON Schema is available at:
-
-```text
-config/app-config.schema.json
-```
-
-To load markdown from a public GitHub repository, set:
-
-```json
-{
-	"github": {
-		"enabled": true,
-		"owner": "your-user-or-org",
-		"repo": "your-markdown-vault",
-		"branch": "main",
-		"manifestPath": "manifest.json",
-		"rootPath": "notes",
-		"assetRootPath": "images"
-	}
-}
-```
-
-The public content repository keeps its generated `manifest.json` at the repository root. Papyrus loads that file through `raw.githubusercontent.com`, builds navigation and search from its metadata, then fetches each Markdown body from a revision-pinned CDN URL only when the note is first opened.
-
-The bundled local demo vault lives in:
-
-```text
-docs
-```
-
-It doubles as a short Papyrus guide and as sample content for local testing. The active demo manifest is configured at `docs/manifest.json`; run `npm run manifest` after changing local notes.
-
-External links can receive configured UTM parameters by enabling `externalLinks.utm` in `config/app-config.json`.
-
-## Dependencies
-
-Papyrus imports Marked, Mermaid, PrismJS, QRCode, and Cuelume directly from version-pinned jsDelivr URLs. Marked handles Markdown parsing, Mermaid renders Obsidian-compatible diagram fences, PrismJS handles syntax highlighting with the Prism Tomorrow theme, QRCode renders selected-text codes, and Cuelume synthesizes interaction sounds at runtime. The static app has no package installation or build step.
-
-MapLibre GL JS is loaded only when a note contains a map component.
-
-## Content
-
-Papyrus expects Markdown files (`.md` or `.mdx`). Frontmatter is optional:
-
-```md
----
-title: Example note
-tags: publishing, markdown
-featured: true
----
-
-# Example note
-
-Link to [[another-note]] or [[folder/note|a labeled note]].
-```
-
-Papyrus uses the first three manifest records with `featured: true` for the home-page cards. Their titles and previews come from the manifest, so rendering the home screen does not fetch those Markdown bodies.
-
-Maps use a fenced Markdown component with one property per line:
-
-````md
-```map
-latitude: 60.1699
-longitude: 24.9384
-zoom: 11
-marker: true
-grayscale: true
-label: Helsinki
-```
-````
-
-Map support, fallback coordinates, and the default grayscale value are configured under `maps` in `config/app-config.json`. Individual map fences can override that default.
-
-Ticker cards use the same one-property-per-line fenced component contract:
-
-````md
-```ticker
-symbol: NOKIA
-label: Nokia Oyj
-market: Nasdaq Helsinki
-quote: 4.67 EUR
-change: +0.73%
-```
-````
-
-Ticker values are display-only content. The card links to a Google search for `stock ticker {symbol}`; changes beginning with `+` or `↑` use positive styling, while changes beginning with `-`, `−`, or `↓` use negative styling.
-
-Periodic tables use the `pte` fence and accept a label plus a comma- or space-separated list of symbols:
-
-````md
-```pte
-label: Elements in caffeine
-elements: H, C, N, O
-```
-````
-
-Every element links to the reference service configured under `periodicTable`. Its `linkTemplate` can contain `{Z}`, `{symbol}`, or both; Papyrus substitutes the element's atomic number and standard symbol before rendering the URL.
-
-SWOT analyses use four plain-text properties and always render a complete quadrant grid:
-
-````md
-```swot
-strengths: Strong customer retention and a focused product.
-weaknesses: A small team with limited distribution.
-opportunities: Growing demand in adjacent markets.
-threats: Larger competitors entering the category.
-```
-````
+- [Introduction](docs/start/papyrus.md)
+- [Setup](docs/workflow/setup.md)
+- [Publishing](docs/workflow/publish.md)
+- [Markdown and Obsidian features](docs/reference/extensions/obsidian-and-papyrus.md)
+- [Papyrus components](docs/reference/extensions/papyrus-components.md)
+- [Interface](docs/reference/interface.md)
 
 ## Deployment
 
-This project is intended for GitHub Pages:
+Papyrus is made of static HTML, CSS, JavaScript, configuration, and content files. Configure the app, commit the files to a public repository, and serve it with GitHub Pages or another static host. See the [publishing guide](docs/workflow/publish.md) for the deployment checklist.
 
-1. Commit the static app files.
-2. Configure `config/app-config.json`.
-3. Enable GitHub Pages for the repository.
-4. Keep the markdown vault in the same public repository or another public repository.
+Browser dependencies are imported directly from version-pinned CDN URLs, so there is no package installation or production build step.
 
 ## License
 
-MIT
+[MIT](LICENSE)
