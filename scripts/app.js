@@ -908,7 +908,7 @@ function renderBookmarks() {
 	container.replaceChildren();
 
 	if (!notes.length) {
-		container.innerHTML = `<p class="muted">No bookmarked notes yet.</p>`;
+		container.innerHTML = `<p class="bookmarks-message">No bookmarked notes yet.</p>`;
 		return;
 	}
 

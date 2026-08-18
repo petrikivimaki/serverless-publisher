@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"generatedAt": "2026-08-18T14:26:05.595Z",
+	"generatedAt": "2026-08-18T15:45:14.441Z",
 	"revision": "local",
 	"contentRoot": "",
 	"files": [
@@ -56,8 +56,8 @@
 			"excerpt": "Papyrus Docs Papyrus turns a folder of Markdown files into a public, Obsidian-style knowledge base for GitHub Pages. This docs vault introduces the project and also acts as live sample content for testing search, file browsing, backlinks, metadata, source comments, blockquotes,…",
 			"wordCount": 286,
 			"characterCount": 1924,
-			"size": 3220,
-			"hash": "c3717f65836da187e3a8c2b0d8854d053118f97f6e3655c8c0d95a3b28ed6008"
+			"size": 3174,
+			"hash": "066227cfbd622895e766c1129c72d5022b0ae7a26489a841545ea15bb8c6fe6d"
 		},
 		{
 			"path": "reference/extensions/callouts.md",
@@ -345,10 +345,10 @@
 				"workflow/setup.md"
 			],
 			"excerpt": "Interface and Reading Controls Papyrus uses a three-part reading shell: a primary menu for browsing the vault, a central reading workspace, and a secondary menu for the active note's context. Both side menus are optional, so the article can use the entire window when they are cl…",
-			"wordCount": 1258,
-			"characterCount": 8133,
-			"size": 8414,
-			"hash": "f8ab709d15d66d5220f61cbce131e29b4d77530c109bb08dd9d4ca1b651b7236"
+			"wordCount": 1395,
+			"characterCount": 9033,
+			"size": 9320,
+			"hash": "847d57434fea832bfd333aaeece9e5f073bb230854cb9a7538ac5dbdd9e31c7a"
 		},
 		{
 			"path": "reference/linktree.md",

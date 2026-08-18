@@ -87,25 +87,25 @@
 }
 
 :root[data-theme="ocean"] {
-	--background: rgb(10,22,44);
-	--surface: rgb(13,30,59);
-	--surface-muted: rgb(20,42,78);
-	--line: rgb(42,67,111);
-	--line-strong: rgb(64,94,146);
-	--text: rgb(229,238,255);
-	--text-muted: rgb(153,173,207);
-	--accent: rgb(99,179,255);
-	--accent-soft: rgb(21,62,112);
-	--positive: rgb(91,205,143);
-	--danger: rgb(255,128,120);
-	--code: rgb(5,17,35);
-	--code-header: rgb(10,26,51);
-	--code-line: rgb(44,72,119);
-	--code-action: rgb(15,38,72);
-	--code-action-line: rgb(62,96,154);
-	--code-text: rgb(235,243,255);
-	--inline-code-background: rgb(21,45,83);
-	--shadow: 0 16px 36px rgb(0,0,0,0.4);
+	--background: RGB(20,24,32);
+	--surface: RGB(27,31,40);
+	--surface-muted: RGB(42,47,57);
+	--line: RGB(63,69,82);
+	--line-strong: RGB(79,87,104);
+	--text: RGB(236,238,242);
+	--text-muted: RGB(143,154,173);
+	--accent: RGB(112,142,239);
+	--accent-soft: RGB(31,41,70);
+	--positive: RGB(91,190,133);
+	--danger: RGB(239,116,105);
+	--code: RGB(15,18,24);
+	--code-header: RGB(23,27,34);
+	--code-line: RGB(58,64,76);
+	--code-action: RGB(34,39,48);
+	--code-action-line: RGB(70,77,91);
+	--code-text: RGB(240,242,246);
+	--inline-code-background: RGB(43,48,57);
+	--shadow: 0 14px 32px RGB(0,0,0,0.36);
 	color-scheme: dark;
 }
 
@@ -715,7 +715,8 @@ button {
 	color: var(--text);
 }
 
-.search-results {
+.search-results,
+.bookmarks-list {
 	padding-right: 12px;
 	padding-left: 12px;
 }
@@ -788,7 +789,8 @@ button {
 	background: var(--accent-soft);
 }
 
-.search-message {
+.search-message,
+.bookmarks-message {
 	margin: 0;
 	padding: 8px;
 	border-radius: 6px;
@@ -2479,24 +2481,35 @@ button {
 
 .link-list {
 	display: grid;
-	gap: 4px;
+	gap: 2px;
 }
 
 .link-chip {
 	display: flex;
 	align-items: center;
-	gap: 7px;
+	gap: 6px;
 	width: 100%;
-	padding: 7px 8px;
+	min-height: 28px;
+	padding: 5px 6px;
 	border: 0;
 	border-radius: 6px;
 	background: transparent;
 	color: var(--text);
+	font-size: 13px;
+	line-height: 1.3;
 	text-align: left;
 }
 
 .link-chip:hover {
 	background: var(--surface-muted);
+}
+
+.link-chip i {
+	flex: 0 0 13px;
+	width: 13px;
+	color: var(--text-muted);
+	font-size: 12px;
+	text-align: center;
 }
 
 .linktree-list {
