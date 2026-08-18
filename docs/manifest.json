@@ -1,19 +1,608 @@
 {
+	"schemaVersion": 1,
+	"generatedAt": "2026-08-18T14:26:05.595Z",
+	"revision": "local",
+	"contentRoot": "",
 	"files": [
-		"README.md",
-		"start/papyrus.md",
-		"start/concepts/obsidian.md",
-		"start/concepts/github-pages.md",
-		"workflow/setup.md",
-		"workflow/publish.md",
-		"reference/markdown.md",
-		"reference/extensions/obsidian-and-papyrus.md",
-		"reference/extensions/frontmatter.md",
-		"reference/extensions/obsidian-syntax.md",
-		"reference/extensions/callouts.md",
-		"reference/extensions/mermaid.md",
-		"reference/extensions/papyrus-components.md",
-		"reference/interface.md",
-		"reference/linktree.md"
+		{
+			"path": "README.md",
+			"title": "Papyrus Docs",
+			"metadata": {
+				"title": "Papyrus Docs",
+				"status": "demo",
+				"tags": "papyrus, documentation, markdown",
+				"authors": [
+					"Papyrus Team"
+				]
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "start/papyrus",
+					"path": "start/papyrus.md"
+				},
+				{
+					"type": "wiki",
+					"target": "workflow/setup",
+					"path": "workflow/setup.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/markdown",
+					"path": "reference/markdown.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/obsidian-and-papyrus",
+					"path": "reference/extensions/obsidian-and-papyrus.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/callouts",
+					"path": "reference/extensions/callouts.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/papyrus-components",
+					"path": "reference/extensions/papyrus-components.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/mermaid",
+					"path": "reference/extensions/mermaid.md"
+				}
+			],
+			"backlinks": [],
+			"excerpt": "Papyrus Docs Papyrus turns a folder of Markdown files into a public, Obsidian-style knowledge base for GitHub Pages. This docs vault introduces the project and also acts as live sample content for testing search, file browsing, backlinks, metadata, source comments, blockquotes,…",
+			"wordCount": 286,
+			"characterCount": 1924,
+			"size": 3220,
+			"hash": "c3717f65836da187e3a8c2b0d8854d053118f97f6e3655c8c0d95a3b28ed6008"
+		},
+		{
+			"path": "reference/extensions/callouts.md",
+			"title": "Obsidian Callouts",
+			"metadata": {
+				"title": "Obsidian Callouts",
+				"status": "reference",
+				"tags": "obsidian, callouts, blockquotes, syntax",
+				"license": "CC BY 4.0"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "reference/markdown",
+					"path": "reference/markdown.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/obsidian-syntax",
+					"path": "reference/extensions/obsidian-syntax.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/mermaid",
+					"path": "reference/extensions/mermaid.md"
+				}
+			],
+			"backlinks": [
+				"README.md",
+				"reference/extensions/obsidian-and-papyrus.md",
+				"reference/extensions/obsidian-syntax.md",
+				"reference/markdown.md"
+			],
+			"excerpt": "Obsidian Callouts Papyrus supports Obsidian callouts inside standard Markdown blockquotes. Put [!type] at the start of the first quoted line. Add text after the marker for a custom title; otherwise Papyrus supplies the type's default title. Light themes use a pale type-colored b…",
+			"wordCount": 430,
+			"characterCount": 2656,
+			"size": 3381,
+			"hash": "c075b5d5e8723fef487614a32bacf0f0f08719aac3ac7da7ac799fb18d405102"
+		},
+		{
+			"path": "reference/extensions/frontmatter.md",
+			"title": "Frontmatter Properties",
+			"metadata": {
+				"title": "Frontmatter Properties",
+				"status": "reference",
+				"tags": "obsidian, frontmatter, metadata, configuration",
+				"license": "CC BY 4.0"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "workflow/content-repository",
+					"path": "workflow/content-repository.md"
+				},
+				{
+					"type": "wiki",
+					"target": "workflow/setup",
+					"path": "workflow/setup.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/obsidian-syntax",
+					"path": "reference/extensions/obsidian-syntax.md"
+				}
+			],
+			"backlinks": [
+				"reference/extensions/obsidian-and-papyrus.md",
+				"reference/extensions/obsidian-syntax.md",
+				"reference/interface.md",
+				"workflow/setup.md"
+			],
+			"excerpt": "Frontmatter Properties Frontmatter is note-level metadata placed between --- delimiters at the very beginning of a Markdown file. The content-manifest generator copies every property into the note record, and Papyrus uses that manifest metadata for article identity, search, read…",
+			"wordCount": 615,
+			"characterCount": 3967,
+			"size": 4762,
+			"hash": "9486efbe638e5783ed7913fc7132ea427ee230dbd732e077ea8fbea1c7c86db2"
+		},
+		{
+			"path": "reference/extensions/mermaid.md",
+			"title": "Mermaid Diagrams",
+			"metadata": {
+				"title": "Mermaid Diagrams",
+				"status": "reference",
+				"tags": "obsidian, mermaid, diagrams, syntax",
+				"license": "CC BY 4.0"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "reference/extensions/obsidian-syntax",
+					"path": "reference/extensions/obsidian-syntax.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/markdown",
+					"path": "reference/markdown.md"
+				}
+			],
+			"backlinks": [
+				"README.md",
+				"reference/extensions/callouts.md",
+				"reference/extensions/obsidian-and-papyrus.md",
+				"reference/extensions/obsidian-syntax.md",
+				"reference/extensions/papyrus-components.md",
+				"reference/markdown.md"
+			],
+			"excerpt": "Mermaid Diagrams Papyrus follows Obsidian's Mermaid convention: place Mermaid syntax in a fenced code block whose identifier is exactly mermaid. The browser renders the fence as a diagram instead of showing it as source code. Flowcharts, sequence diagrams, class diagrams, state…",
+			"wordCount": 147,
+			"characterCount": 1011,
+			"size": 1806,
+			"hash": "7fbbfdd0e94efad1c5b1d9ab620da81b6102ee0ff88c83d032ef688a3f919618"
+		},
+		{
+			"path": "reference/extensions/obsidian-and-papyrus.md",
+			"title": "Obsidian and Papyrus Extensions",
+			"metadata": {
+				"title": "Obsidian and Papyrus Extensions",
+				"status": "reference",
+				"tags": "obsidian, papyrus, syntax, extensions",
+				"license": "CC BY 4.0"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "reference/extensions/frontmatter",
+					"path": "reference/extensions/frontmatter.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/obsidian-syntax",
+					"path": "reference/extensions/obsidian-syntax.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/callouts",
+					"path": "reference/extensions/callouts.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/mermaid",
+					"path": "reference/extensions/mermaid.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/papyrus-components",
+					"path": "reference/extensions/papyrus-components.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/markdown",
+					"path": "reference/markdown.md"
+				}
+			],
+			"backlinks": [
+				"README.md",
+				"start/concepts/obsidian.md"
+			],
+			"excerpt": "Obsidian and Papyrus Extensions Papyrus supports standard Markdown, familiar Obsidian conventions, and a small set of custom components. The extension reference is divided into focused notes so each feature is easier to find and test. Obsidian conventions Frontmatter properties…",
+			"wordCount": 121,
+			"characterCount": 913,
+			"size": 1283,
+			"hash": "3555aaa866ebb8b05e398bde70ffe795334b932d131fbd82af2830f0b5278a7e"
+		},
+		{
+			"path": "reference/extensions/obsidian-syntax.md",
+			"title": "Obsidian Syntax and Note Features",
+			"metadata": {
+				"title": "Obsidian Syntax and Note Features",
+				"status": "reference",
+				"tags": "obsidian, syntax, links, comments, footnotes, math",
+				"license": "CC BY 4.0"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "reference/extensions/frontmatter",
+					"path": "reference/extensions/frontmatter.md"
+				},
+				{
+					"type": "wiki",
+					"target": "workflow/publish",
+					"path": "workflow/publish.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/callouts",
+					"path": "reference/extensions/callouts.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/mermaid",
+					"path": "reference/extensions/mermaid.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/markdown",
+					"path": "reference/markdown.md"
+				}
+			],
+			"backlinks": [
+				"reference/extensions/callouts.md",
+				"reference/extensions/frontmatter.md",
+				"reference/extensions/mermaid.md",
+				"reference/extensions/obsidian-and-papyrus.md"
+			],
+			"excerpt": "Obsidian Syntax and Note Features Papyrus supports standard Markdown plus several Obsidian conventions that help a published vault retain its structure and connections. See Frontmatter properties for note metadata and its special roles. Wiki links Use Obsidian-style links to con…",
+			"wordCount": 310,
+			"characterCount": 2283,
+			"size": 4098,
+			"hash": "de97cfd840f671a1fa89dfacf14fca17c54c131fd995896d0f935df4278e00d1"
+		},
+		{
+			"path": "reference/extensions/papyrus-components.md",
+			"title": "Papyrus Custom Components",
+			"metadata": {
+				"title": "Papyrus Custom Components",
+				"status": "reference",
+				"tags": "papyrus, components, maps, markets, analysis",
+				"license": "CC BY 4.0"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "workflow/setup",
+					"path": "workflow/setup.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/markdown",
+					"path": "reference/markdown.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/mermaid",
+					"path": "reference/extensions/mermaid.md"
+				}
+			],
+			"backlinks": [
+				"README.md",
+				"reference/extensions/obsidian-and-papyrus.md"
+			],
+			"excerpt": "Papyrus Custom Components Papyrus uses the standard Markdown code-fence shape as its custom component contract. The fence identifier selects the component, and its body contains one property: value pair per line. Maps A map is written as: | Property | Value | Behavior | | --- |…",
+			"wordCount": 784,
+			"characterCount": 4772,
+			"size": 5850,
+			"hash": "860a45bea68c6c854564887ccc5adfce6b51b7c7d3969f501feb82761ec69810"
+		},
+		{
+			"path": "reference/interface.md",
+			"title": "Interface and Reading Controls",
+			"metadata": {
+				"title": "Interface and Reading Controls",
+				"status": "draft",
+				"tags": "papyrus, interface, appearance"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "reference/extensions/frontmatter",
+					"path": "reference/extensions/frontmatter.md"
+				},
+				{
+					"type": "wiki",
+					"target": "workflow/setup",
+					"path": "workflow/setup.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/linktree",
+					"path": "reference/linktree.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/markdown",
+					"path": "reference/markdown.md"
+				},
+				{
+					"type": "wiki",
+					"target": "start/papyrus",
+					"path": "start/papyrus.md"
+				}
+			],
+			"backlinks": [
+				"reference/linktree.md",
+				"workflow/setup.md"
+			],
+			"excerpt": "Interface and Reading Controls Papyrus uses a three-part reading shell: a primary menu for browsing the vault, a central reading workspace, and a secondary menu for the active note's context. Both side menus are optional, so the article can use the entire window when they are cl…",
+			"wordCount": 1258,
+			"characterCount": 8133,
+			"size": 8414,
+			"hash": "f8ab709d15d66d5220f61cbce131e29b4d77530c109bb08dd9d4ca1b651b7236"
+		},
+		{
+			"path": "reference/linktree.md",
+			"title": "Linktree Profile",
+			"metadata": {
+				"title": "Linktree Profile",
+				"status": "draft",
+				"tags": "papyrus, interface, configuration, linktree"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "workflow/setup",
+					"path": "workflow/setup.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/interface",
+					"path": "reference/interface.md"
+				}
+			],
+			"backlinks": [
+				"reference/interface.md",
+				"workflow/setup.md"
+			],
+			"excerpt": "Linktree Profile The primary menu's Links view can be a compact profile for a person, team, project, or organization. Its content comes entirely from linktree in config/app-config.json. title and subtitle are optional. When either is present, Papyrus renders a compact, left-alig…",
+			"wordCount": 306,
+			"characterCount": 2051,
+			"size": 2864,
+			"hash": "d6d401173f60cb4e0e8b93825332ae6d3b31834e64373a4dd448bc7fdd8d757e"
+		},
+		{
+			"path": "reference/markdown.md",
+			"title": "Markdown Basics",
+			"metadata": {
+				"title": "Markdown Basics",
+				"status": "reference",
+				"featured": true,
+				"tags": "markdown, syntax"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "reference/extensions/callouts",
+					"path": "reference/extensions/callouts.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/mermaid",
+					"path": "reference/extensions/mermaid.md"
+				}
+			],
+			"backlinks": [
+				"README.md",
+				"reference/extensions/callouts.md",
+				"reference/extensions/mermaid.md",
+				"reference/extensions/obsidian-and-papyrus.md",
+				"reference/extensions/obsidian-syntax.md",
+				"reference/extensions/papyrus-components.md",
+				"reference/interface.md",
+				"workflow/publish.md"
+			],
+			"excerpt": "Markdown Basics Markdown is a plain-text format for structured writing. Papyrus uses Marked to render Markdown in the browser. Core syntax Tables Papyrus places standard Markdown tables in a responsive scroll container. Each table receives a generated header with its body-row an…",
+			"wordCount": 394,
+			"characterCount": 2490,
+			"size": 3452,
+			"hash": "4a821ae0ac62fa60eaf5ca2fce4924f805e9c035ca8e81d4c637d6c404030032"
+		},
+		{
+			"path": "start/concepts/github-pages.md",
+			"title": "GitHub and GitHub Pages",
+			"metadata": {
+				"title": "GitHub and GitHub Pages",
+				"status": "reference",
+				"tags": "github, git, github-pages"
+			},
+			"outgoingLinks": [],
+			"backlinks": [],
+			"excerpt": "GitHub and GitHub Pages Git tracks changes to files. GitHub hosts Git repositories. GitHub Pages publishes static websites from a repository. Papyrus fits that model because it is only HTML, CSS, JavaScript, JSON, images, and Markdown. There is no server to run. Two common repos…",
+			"wordCount": 117,
+			"characterCount": 717,
+			"size": 1053,
+			"hash": "d9dc431f5c6d8ceaeda52dcd592d382e9ce5f4dfcbb1ddec0223f2b41fdfed35"
+		},
+		{
+			"path": "start/concepts/obsidian.md",
+			"title": "Obsidian in Brief",
+			"metadata": {
+				"title": "Obsidian in Brief",
+				"status": "reference",
+				"tags": "obsidian, markdown, notes"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "wiki links",
+					"path": null
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/obsidian-and-papyrus",
+					"path": "reference/extensions/obsidian-and-papyrus.md"
+				}
+			],
+			"backlinks": [],
+			"excerpt": "Obsidian in Brief Obsidian is a local-first Markdown notes app. A collection of notes is called a vault, and each note is a normal file on disk. That makes Obsidian a good authoring tool for Papyrus: the same files can be read locally, versioned with Git, and published on the we…",
+			"wordCount": 123,
+			"characterCount": 767,
+			"size": 1017,
+			"hash": "c418d642b1fb6a6b128e23e7dcf12e8b95087e417cc54ca407c62eae01d5b721"
+		},
+		{
+			"path": "start/papyrus.md",
+			"title": "What Papyrus Does",
+			"metadata": {
+				"title": "What Papyrus Does",
+				"status": "draft",
+				"featured": true,
+				"tags": "papyrus, github-pages, obsidian"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "workflow/setup",
+					"path": "workflow/setup.md"
+				},
+				{
+					"type": "wiki",
+					"target": "workflow/content-repository",
+					"path": "workflow/content-repository.md"
+				}
+			],
+			"backlinks": [
+				"README.md",
+				"reference/interface.md"
+			],
+			"excerpt": "What Papyrus Does Papyrus is a static frontend for Markdown knowledge bases. It is designed for people who like writing in Obsidian but want a lightweight public website that can run on GitHub Pages without a backend. The app provides: A file tree for large folders Manifest-back…",
+			"wordCount": 176,
+			"characterCount": 1032,
+			"size": 1251,
+			"hash": "f37bddd8b1312611cfd5aeedb2c24b21755eb75d28402ab9dd1837d27ca16337"
+		},
+		{
+			"path": "workflow/content-repository.md",
+			"title": "Content Repository and Manifest",
+			"metadata": {
+				"title": "Content Repository and Manifest",
+				"status": "reference",
+				"tags": "content, manifest, github-actions, performance"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "workflow/publish",
+					"path": "workflow/publish.md"
+				}
+			],
+			"backlinks": [
+				"reference/extensions/frontmatter.md",
+				"start/papyrus.md",
+				"workflow/publish.md",
+				"workflow/setup.md"
+			],
+			"excerpt": "Content Repository and Manifest Papyrus discovers notes through one versioned manifest.json. It never scans a browser-visible directory or calls GitHub's tree API. The same manifest contract drives local development and public GitHub content. Loading model At startup, Papyrus lo…",
+			"wordCount": 412,
+			"characterCount": 2985,
+			"size": 4213,
+			"hash": "6af7f8139eee74c6c0d89330660bd90621bdf4ab204678e7a7b098e83b02611b"
+		},
+		{
+			"path": "workflow/publish.md",
+			"title": "Publishing Workflow",
+			"metadata": {
+				"title": "Publishing Workflow",
+				"status": "draft",
+				"tags": "publish, git, markdown"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "workflow/content-repository",
+					"path": "workflow/content-repository.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/markdown",
+					"path": "reference/markdown.md"
+				}
+			],
+			"backlinks": [
+				"reference/extensions/obsidian-syntax.md",
+				"workflow/content-repository.md",
+				"workflow/setup.md"
+			],
+			"excerpt": "Publishing Workflow After setup, publishing is mostly a writing loop. 1. Edit Markdown files locally. 2. Preview the vault in Obsidian. 3. Run Papyrus locally and check navigation. 4. Commit the changes with Git. 5. Push to GitHub. 6. Let GitHub Pages serve the updated site. If…",
+			"wordCount": 164,
+			"characterCount": 1070,
+			"size": 1317,
+			"hash": "65b9a4610df5fdd0c5c46bb30a90cf2f349164d133021bef6362a786c3f26fa9"
+		},
+		{
+			"path": "workflow/setup.md",
+			"title": "Setup Workflow",
+			"metadata": {
+				"title": "Setup Workflow",
+				"status": "draft",
+				"featured": true,
+				"tags": "setup, workflow, github-pages"
+			},
+			"outgoingLinks": [
+				{
+					"type": "wiki",
+					"target": "workflow/content-repository",
+					"path": "workflow/content-repository.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/interface#home-screen",
+					"path": "reference/interface.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/linktree",
+					"path": "reference/linktree.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/interface",
+					"path": "reference/interface.md"
+				},
+				{
+					"type": "wiki",
+					"target": "reference/extensions/frontmatter",
+					"path": "reference/extensions/frontmatter.md"
+				},
+				{
+					"type": "wiki",
+					"target": "workflow/publish",
+					"path": "workflow/publish.md"
+				}
+			],
+			"backlinks": [
+				"README.md",
+				"reference/extensions/frontmatter.md",
+				"reference/extensions/papyrus-components.md",
+				"reference/interface.md",
+				"reference/linktree.md",
+				"start/papyrus.md"
+			],
+			"excerpt": "Setup Workflow This is the short path from a local vault to a public site. 1. Clone Papyrus Create your own copy of the Papyrus repository on GitHub, then clone it: Serve it locally with any static file server: Open http://localhost:4173/. 2. Configure GitHub Pages In the reposi…",
+			"wordCount": 564,
+			"characterCount": 3913,
+			"size": 4492,
+			"hash": "fff7dff02877a7a5cbc0f404481b1a951d2e313992ae571911cbeee972461243"
+		}
 	]
 }

@@ -1,6 +1,7 @@
 ---
 title: Markdown Basics
 status: reference
+featured: true
 tags: markdown, syntax
 ---
 

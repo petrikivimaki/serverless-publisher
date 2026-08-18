@@ -4,8 +4,6 @@ status: demo
 tags: papyrus, documentation, markdown
 authors:
   - Papyrus Team
-image: images/bg-lucerne.jpeg
-grayscale: true
 ---
 
 # Papyrus Docs

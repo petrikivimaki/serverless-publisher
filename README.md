@@ -5,7 +5,7 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 ## Features
 
 - Static HTML, CSS, and JavaScript
-- Public GitHub repository loading through browser `fetch()`
+- Manifest-based local and public GitHub content loading
 - Markdown rendering with Marked
 - Syntax highlighting with PrismJS and the Prism Tomorrow theme
 - Obsidian-compatible Mermaid diagrams with light and dark themes
@@ -14,7 +14,7 @@ Papyrus is a client-side Markdown knowledge base frontend for GitHub Pages. It i
 - Obsidian `%%` source comments hidden from rendered articles and indexes
 - Obsidian inline and referenced footnotes with linked return navigation
 - Standard Markdown blockquotes and typed, foldable Obsidian callouts
-- Full-vault search over titles, paths, tags, and body text
+- Startup search over manifest titles, paths, excerpts, and all frontmatter properties
 - Browser-local bookmarks using `localStorage`
 - Runtime-generated Cuelume interaction sounds with a saved on/off control
 - Calendar panel with configurable first day of week
@@ -63,13 +63,15 @@ To load markdown from a public GitHub repository, set:
 		"enabled": true,
 		"owner": "your-user-or-org",
 		"repo": "your-markdown-vault",
-		"branch": "master",
-		"rootPath": ""
+		"branch": "main",
+		"manifestPath": "manifest.json",
+		"rootPath": "notes",
+		"assetRootPath": "images"
 	}
 }
 ```
 
-`rootPath` can point to a subdirectory inside the repository, such as `notes` or `docs`.
+The public content repository keeps its generated `manifest.json` at the repository root. Papyrus loads that file through `raw.githubusercontent.com`, builds navigation and search from its metadata, then fetches each Markdown body from a revision-pinned CDN URL only when the note is first opened.
 
 The bundled local demo vault lives in:
 
@@ -77,7 +79,7 @@ The bundled local demo vault lives in:
 docs
 ```
 
-It doubles as a short Papyrus guide and as sample content for local testing. The active demo manifest is configured at `docs/manifest.json`.
+It doubles as a short Papyrus guide and as sample content for local testing. The active demo manifest is configured at `docs/manifest.json`; run `npm run manifest` after changing local notes.
 
 External links can receive configured UTM parameters by enabling `externalLinks.utm` in `config/app-config.json`.
 
@@ -95,12 +97,15 @@ Papyrus expects Markdown files (`.md` or `.mdx`). Frontmatter is optional:
 ---
 title: Example note
 tags: publishing, markdown
+featured: true
 ---
 
 # Example note
 
 Link to [[another-note]] or [[folder/note|a labeled note]].
 ```
+
+Papyrus uses the first three manifest records with `featured: true` for the home-page cards. Their titles and previews come from the manifest, so rendering the home screen does not fetch those Markdown bodies.
 
 Maps use a fenced Markdown component with one property per line:
 

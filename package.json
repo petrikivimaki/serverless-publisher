@@ -9,6 +9,7 @@
 	"type": "module",
 	"license": "MIT",
 	"scripts": {
-		"dev": "python3 -m http.server 4242"
+		"dev": "python3 -m http.server 4242",
+		"manifest": "node scripts/generate-content-manifest.mjs --content-root docs --output docs/manifest.json --revision local"
 	}
 }

@@ -10,23 +10,6 @@
   "home": {
     "title": "Papyrus",
     "subtitle": "A client-side knowledge base for publishing markdown vaults.",
-    "ctas": [
-      {
-        "title": "What Papyrus does",
-        "description": "A quick orientation to the project.",
-        "path": "start/papyrus.md"
-      },
-      {
-        "title": "Setup workflow",
-        "description": "Clone, configure, write, and publish.",
-        "path": "workflow/setup.md"
-      },
-      {
-        "title": "Markdown basics",
-        "description": "Core syntax and project extensions.",
-        "path": "reference/markdown.md"
-      }
-    ],
     "background": {
       "enabled": false,
       "image": "",
@@ -38,6 +21,7 @@
     "owner": "",
     "repo": "",
     "branch": "",
+    "manifestPath": "manifest.json",
     "rootPath": "",
     "assetRootPath": ""
   },
@@ -145,7 +129,8 @@
     ]
   },
   "pageLoadAnimation": {
-    "enabled": false,
+    "enabled": true,
+    "backgroundColor": "rgb(0,0,0)",
     "logo": "images/papyrus-mark.png",
     "durationMs": 1500,
     "fadeMs": 420

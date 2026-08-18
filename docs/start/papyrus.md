@@ -1,6 +1,7 @@
 ---
 title: What Papyrus Does
 status: draft
+featured: true
 tags: papyrus, github-pages, obsidian
 ---
 
@@ -11,7 +12,7 @@ Papyrus is a static frontend for Markdown knowledge bases. It is designed for pe
 The app provides:
 
 - A file tree for large folders
-- Full-vault search
+- Manifest-backed search across titles, paths, excerpts, and frontmatter
 - Wiki links and backlinks
 - Frontmatter metadata
 - Bookmarks stored in the browser
@@ -27,6 +28,7 @@ Papyrus does not replace your editor. It publishes the files you already write.
 | Write | Obsidian or another Markdown editor | Local `.md` files |
 | Save | Git | Versioned content |
 | Push | GitHub | Public repository |
+| Index | GitHub Actions | Versioned content manifest |
 | Publish | GitHub Pages and Papyrus | Static website |
 
-For the practical version, continue to [[workflow/setup]].
+For the practical version, continue to [[workflow/setup]] and [[workflow/content-repository|Content repository and manifest]].

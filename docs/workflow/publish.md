@@ -24,6 +24,14 @@ git push
 
 If your content lives in a separate repository, run the Git commands there instead of in the Papyrus app repository.
 
+The content repository's GitHub Actions workflow regenerates and commits its root `manifest.json` after Markdown changes are pushed. The manifest records the pushed content revision, so Papyrus can fetch each note from that immutable version. See [[workflow/content-repository|Content repository and manifest]] for setup.
+
+For the local `docs` vault, regenerate the development manifest before previewing changes:
+
+```sh
+npm run manifest
+```
+
 ## Practical checks
 
 - Does the home note open?
@@ -31,5 +39,6 @@ If your content lives in a separate repository, run the Git commands there inste
 - Are image paths correct?
 - Does search find the new content?
 - Do source, download, and share links point where you expect?
+- Does `manifest.json` contain the new frontmatter and link relationships?
 
 For syntax examples, see [[reference/markdown]].

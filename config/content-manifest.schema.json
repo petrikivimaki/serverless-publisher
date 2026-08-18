@@ -1,0 +1,134 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://example.com/papyrus/content-manifest.schema.json",
+	"title": "Papyrus content manifest",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"generatedAt",
+		"revision",
+		"contentRoot",
+		"files"
+	],
+	"properties": {
+		"schemaVersion": {
+			"const": 1
+		},
+		"generatedAt": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"revision": {
+			"type": "string",
+			"description": "Immutable repository commit used to fetch the note bodies. Local manifests may use a descriptive value such as local."
+		},
+		"contentRoot": {
+			"type": "string",
+			"description": "Markdown root directory relative to the manifest. An empty value means the manifest directory."
+		},
+		"files": {
+			"type": "array",
+			"items": {
+				"$ref": "#/$defs/file"
+			}
+		}
+	},
+	"$defs": {
+		"metadataValue": {
+			"oneOf": [
+				{
+					"type": ["string", "number", "boolean", "null"]
+				},
+				{
+					"type": "array",
+					"items": {
+						"type": ["string", "number", "boolean", "null"]
+					}
+				}
+			]
+		},
+		"link": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["type", "target", "path"],
+			"properties": {
+				"type": {
+					"enum": ["wiki", "markdown"]
+				},
+				"target": {
+					"type": "string",
+					"minLength": 1
+				},
+				"path": {
+					"type": ["string", "null"],
+					"description": "Resolved manifest path, or null when the target is missing."
+				}
+			}
+		},
+		"file": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"path",
+				"title",
+				"metadata",
+				"outgoingLinks",
+				"backlinks",
+				"excerpt",
+				"wordCount",
+				"characterCount",
+				"size",
+				"hash"
+			],
+			"properties": {
+				"path": {
+					"type": "string",
+					"pattern": "\\.mdx?$"
+				},
+				"title": {
+					"type": "string",
+					"minLength": 1
+				},
+				"metadata": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/metadataValue"
+					}
+				},
+				"outgoingLinks": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/link"
+					}
+				},
+				"backlinks": {
+					"type": "array",
+					"uniqueItems": true,
+					"items": {
+						"type": "string"
+					}
+				},
+				"excerpt": {
+					"type": "string"
+				},
+				"wordCount": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"characterCount": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"size": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"hash": {
+					"type": "string",
+					"pattern": "^[a-f0-9]{64}$"
+				}
+			}
+		}
+	}
+}

@@ -11,18 +11,6 @@
 	"home": {
 		"title": "Papyrus",
 		"subtitle": "A client-side knowledge base for publishing markdown vaults.",
-		"ctas": [
-			{
-				"title": "Start here",
-				"description": "A short orientation note.",
-				"path": "README.md"
-			},
-			{
-				"title": "Publishing guide",
-				"description": "Key workflow details.",
-				"path": "notes/publishing-guide.md"
-			}
-		],
 		"background": {
 			"enabled": true,
 			"image": "images/bg-lucerne.jpeg",
@@ -34,6 +22,7 @@
 		"owner": "your-user-or-org",
 		"repo": "your-markdown-vault",
 		"branch": "main",
+		"manifestPath": "manifest.json",
 		"rootPath": "notes",
 		"assetRootPath": "images"
 	},
@@ -152,6 +141,7 @@
 	},
 	"pageLoadAnimation": {
 		"enabled": true,
+		"backgroundColor": "rgb(0,0,0)",
 		"logo": "images/papyrus-mark.png",
 		"durationMs": 1500,
 		"fadeMs": 420

@@ -1,3 +1,9 @@
+import {
+	dismissStartupAnimation,
+	startupAnimation,
+	startupConfig,
+	startupConfigError
+} from "./startup.js?v=3";
 import { marked } from "https://cdn.jsdelivr.net/npm/marked@18.0.4/+esm";
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.16.0/+esm";
 import Prism from "https://cdn.jsdelivr.net/npm/prismjs@1.30.0/+esm";
@@ -18,8 +24,8 @@ Prism.plugins.autoloader.languages_path = "https://cdn.jsdelivr.net/npm/prismjs@
 const state = {
 	bookmarks: [],
 	config: {},
-	files: [],
 	folderState: {},
+	manifest: {},
 	notes: [],
 	activePath: "",
 	activePanel: "files",
@@ -48,19 +54,23 @@ const state = {
 	textAlign: "left",
 	tocState: {},
 	navigationNoticeVisible: false,
-	navigationStatusTimer: 0
+	navigationStatusTimer: 0,
+	noteRequestId: 0
 };
 
 const bookmarkStorageKey = "papyrus.bookmarks";
 const appearanceStorageKey = "papyrus.appearance";
 const codeRunnerChannel = "papyrus-code-runner";
 const codeRunnerSessions = new Map();
-const githubTreeCache = new Map();
+const noteContentCache = new Map();
+const noteLoadPromises = new Map();
+const contentManifestSchemaVersion = 1;
 const minimumSelectionCharacters = 5;
 const maximumQrCodeCharacters = 100;
 const minimumScrollTopOffset = 800;
 const qrCodeVisibleMs = 18000;
 const soundEffectsVolume = 0.36;
+const maximumFeaturedNotes = 3;
 const focusTimerDurations = [5, 10, 15, 20];
 const mapPropertyNames = ["latitude", "longitude", "zoom", "marker", "grayscale", "label"];
 const tickerPropertyNames = ["symbol", "label", "quote", "market", "change"];
@@ -235,15 +245,22 @@ async function init() {
 }
 
 /**
- * Loads config and markdown content.
+ * Loads config and the manifest-backed vault index.
  * @returns {Promise<void>}
  */
 async function loadVault() {
-	let loadAnimation = null;
+	const loadAnimation = startupAnimation;
 
 	try {
-		state.config = await fetchJson("config/app-config.json");
-		loadAnimation = startPageLoadAnimation();
+		if (startupConfigError) {
+			throw startupConfigError;
+		}
+
+		if (!startupConfig) {
+			throw new Error("Could not load config/app-config.json");
+		}
+
+		state.config = startupConfig;
 		loadAppearance();
 		applySoundSettings();
 		bindCuelume();
@@ -255,8 +272,11 @@ async function loadVault() {
 		renderFocusTimerControls();
 		document.title = state.config.title || "Papyrus";
 		select(selectors.vaultTitle).textContent = state.config.title || "Papyrus";
-		state.files = await loadFiles({ config: state.config });
-		state.notes = indexNotes({ files: state.files });
+		state.noteRequestId += 1;
+		noteContentCache.clear();
+		noteLoadPromises.clear();
+		state.manifest = await loadManifest({ config: state.config });
+		state.notes = indexManifestNotes({ manifest: state.manifest });
 		const vaultSource = select(selectors.vaultSource);
 		const vaultSourceLabel = getVaultSourceLabel({ config: state.config });
 		vaultSource.textContent = vaultSourceLabel;
@@ -270,52 +290,9 @@ async function loadVault() {
 		const loadSource = getVaultLoadSource({ config: state.config });
 		showNavigationStatus({ message: `Loaded ${state.notes.length} notes from ${loadSource}` });
 	} catch (error) {
-		await finishPageLoadAnimation({ loadAnimation });
 		renderError({ error });
+		await finishPageLoadAnimation({ loadAnimation });
 	}
-}
-
-/**
- * Fetches JSON from a path.
- * @param {string} path
- * @returns {Promise<object>}
- */
-async function fetchJson(path) {
-	const response = await fetch(path, { cache: "no-cache" });
-
-	if (!response.ok) {
-		throw new Error(`Could not load ${path}`);
-	}
-
-	return await response.json();
-}
-
-/**
- * Starts the optional page load animation.
- * @returns {object|null}
- */
-function startPageLoadAnimation() {
-	const config = state.config.pageLoadAnimation || {};
-	const mask = select(selectors.pageLoadMask);
-	const logo = select(selectors.pageLoadLogo);
-	const durationMs = getAnimationNumber({ value: config.durationMs, fallback: 1500 });
-	const fadeMs = getAnimationNumber({ value: config.fadeMs, fallback: 420 });
-
-	if (!config.enabled) {
-		return null;
-	}
-
-	logo.src = config.logo || "images/papyrus-mark.png";
-	mask.style.setProperty("--page-load-fade-ms", `${fadeMs}ms`);
-	mask.classList.remove("is-dimming", "is-leaving");
-	mask.classList.add("is-visible");
-
-	return {
-		startedAt: performance.now(),
-		durationMs,
-		fadeMs,
-		mask
-	};
 }
 
 /**
@@ -326,6 +303,7 @@ function startPageLoadAnimation() {
  */
 async function finishPageLoadAnimation({ loadAnimation }) {
 	if (!loadAnimation) {
+		dismissStartupAnimation();
 		return;
 	}
 
@@ -338,26 +316,10 @@ async function finishPageLoadAnimation({ loadAnimation }) {
 
 	loadAnimation.mask.classList.add("is-dimming");
 	await delay(Math.max(0, loadAnimation.fadeMs - 120));
+	document.documentElement.classList.remove("is-page-loading");
 	loadAnimation.mask.classList.add("is-leaving");
 	await delay(160);
-	loadAnimation.mask.classList.remove("is-visible", "is-dimming", "is-leaving");
-}
-
-/**
- * Gets a valid animation timing value.
- * @param {object} params
- * @param {number|string} params.value
- * @param {number} params.fallback
- * @returns {number}
- */
-function getAnimationNumber({ value, fallback }) {
-	const number = Number(value);
-
-	if (Number.isFinite(number) && number >= 0) {
-		return number;
-	}
-
-	return fallback;
+	dismissStartupAnimation();
 }
 
 /**
@@ -372,250 +334,195 @@ function delay(milliseconds) {
 }
 
 /**
- * Loads markdown files from GitHub or local fallback.
+ * Loads a content manifest from GitHub or the local vault.
+ * @async
  * @param {object} params
  * @param {object} params.config
- * @returns {Promise<Array<object>>}
+ * @returns {Promise<object>}
  */
-async function loadFiles({ config }) {
+async function loadManifest({ config }) {
 	if (config.github?.enabled) {
-		return await loadGithubFiles({ github: config.github });
+		return await loadGithubManifest({ github: config.github });
 	}
 
 	if (config.localFallback?.enabled) {
-		return await loadLocalFiles({ manifestPath: config.localFallback.manifest });
+		return await loadLocalManifest({ manifestPath: config.localFallback.manifest });
 	}
 
-	return [];
+	throw new Error("No content source is enabled.");
 }
 
 /**
- * Loads markdown files listed in a local manifest.
+ * Loads a local content manifest.
+ * @async
  * @param {object} params
  * @param {string} params.manifestPath
- * @returns {Promise<Array<object>>}
+ * @returns {Promise<object>}
  */
-async function loadLocalFiles({ manifestPath }) {
+async function loadLocalManifest({ manifestPath }) {
 	const manifestResponse = await fetch(manifestPath, { cache: "no-cache" });
 
 	if (!manifestResponse.ok) {
-		return [];
+		throw new Error(`Could not load the local content manifest: ${manifestPath}`);
 	}
 
 	const manifest = await manifestResponse.json();
-	const basePath = manifestPath.split("/").slice(0, -1).join("/");
-	const files = [];
-
-	for (let index = 0; index < manifest.files.length; index += 1) {
-		const path = manifest.files[index];
-		const response = await fetch(`${basePath}/${path}`, { cache: "no-cache" });
-
-		if (response.ok) {
-			files.push({
-				path,
-				name: getFileName(path),
-				content: await response.text(),
-				sourceUrl: `${basePath}/${path}`
-			});
-		}
-	}
-
-	return files;
-}
-
-/**
- * Loads markdown files from a public GitHub repository.
- * @param {object} params
- * @param {object} params.github
- * @returns {Promise<Array<object>>}
- */
-async function loadGithubFiles({ github }) {
-	const treeData = await loadGithubTree({ github });
-	const rootPath = normalizePath(github.rootPath || "");
-	const markdownItems = filterMarkdownTree({ tree: treeData.tree || [], rootPath });
-	const files = [];
-
-	for (let index = 0; index < markdownItems.length; index += 1) {
-		const item = markdownItems[index];
-		const rawPath = item.path;
-		const displayPath = rootPath ? rawPath.replace(`${rootPath}/`, "") : rawPath;
-		const cdnUrl = getGithubCdnUrl({ path: displayPath });
-		const response = await fetch(cdnUrl);
-
-		if (response.ok) {
-			files.push({
-				path: displayPath,
-				name: getFileName(displayPath),
-				content: await response.text(),
-				sourceUrl: cdnUrl
-			});
-		}
-	}
-
-	return files;
-}
-
-/**
- * Loads a GitHub repository tree with a page-lifetime cache.
- * @param {object} params
- * @param {object} params.github
- * @returns {Promise<object>}
- */
-async function loadGithubTree({ github }) {
-	const cached = readGithubTreeCache({ github });
-
-	if (cached) {
-		return cached;
-	}
-
-	const commit = await fetchGithubBranchCommit({ github });
-	const tree = await fetchGithubTree({ github, sha: commit.treeSha });
-
-	writeGithubTreeCache({
-		github,
-		treeData: {
-			commitSha: commit.commitSha,
-			treeSha: commit.treeSha,
-			tree: tree.tree || []
-		}
-	});
+	const validated = validateContentManifest({ manifest, requireRevision: false });
+	const manifestDirectory = manifestPath.split("/").slice(0, -1).join("/");
+	const contentDirectory = joinUrlPath({ rootPath: manifestDirectory, path: validated.contentRoot || "" });
 
 	return {
-		commitSha: commit.commitSha,
-		treeSha: commit.treeSha,
-		tree: tree.tree || []
+		...validated,
+		manifestUrl: manifestPath,
+		sourceType: "local",
+		contentBaseUrl: contentDirectory
 	};
 }
 
 /**
- * Fetches the latest branch commit metadata.
+ * Loads a content manifest from a public GitHub repository.
+ * @async
  * @param {object} params
  * @param {object} params.github
  * @returns {Promise<object>}
  */
-async function fetchGithubBranchCommit({ github }) {
-	const commitUrl = `https://api.github.com/repos/${github.owner}/${github.repo}/commits/${github.branch}`;
-	const response = await fetch(commitUrl);
+async function loadGithubManifest({ github }) {
+	const manifestPath = normalizePath(github.manifestPath || "manifest.json");
+	const manifestUrl = getGithubRawContentUrl({ github, path: manifestPath, revision: github.branch });
+	const response = await fetch(manifestUrl, { cache: "no-cache" });
 
 	if (!response.ok) {
-		throw new Error("Could not load the GitHub branch commit.");
+		throw new Error(`Could not load the GitHub content manifest: ${manifestUrl}`);
 	}
 
-	const data = await response.json();
-	const treeSha = data.commit?.tree?.sha || "";
-	const commitSha = data.sha || "";
+	const manifest = validateContentManifest({ manifest: await response.json(), requireRevision: true });
+	const configuredRootPath = normalizePath(github.rootPath || "");
+	const manifestRootPath = normalizePath(manifest.contentRoot || "");
 
-	if (!treeSha) {
-		throw new Error("The GitHub branch commit did not include a tree SHA.");
+	if (configuredRootPath !== manifestRootPath) {
+		throw new Error(`The GitHub rootPath (${configuredRootPath || "repository root"}) does not match the manifest contentRoot (${manifestRootPath || "repository root"}).`);
 	}
 
-	return { commitSha, treeSha };
+	return {
+		...manifest,
+		manifestUrl,
+		sourceType: "github",
+		contentBaseUrl: ""
+	};
 }
 
 /**
- * Fetches a recursive GitHub tree by SHA.
+ * Validates the content manifest contract used by the app.
  * @param {object} params
- * @param {object} params.github
- * @param {string} params.sha
- * @returns {Promise<object>}
+ * @param {object} params.manifest
+ * @param {boolean} params.requireRevision
+ * @returns {object}
  */
-async function fetchGithubTree({ github, sha }) {
-	const treeUrl = `https://api.github.com/repos/${github.owner}/${github.repo}/git/trees/${sha}?recursive=1`;
-	const response = await fetch(treeUrl);
-
-	if (!response.ok) {
-		throw new Error("Could not load the GitHub repository tree.");
+function validateContentManifest({ manifest, requireRevision }) {
+	if (!manifest || manifest.schemaVersion !== contentManifestSchemaVersion || !Array.isArray(manifest.files)) {
+		throw new Error(`Unsupported content manifest. Expected schemaVersion ${contentManifestSchemaVersion}.`);
 	}
 
-	return await response.json();
-}
-
-/**
- * Reads a cached GitHub tree.
- * @param {object} params
- * @param {object} params.github
- * @returns {object|null}
- */
-function readGithubTreeCache({ github }) {
-	const cached = githubTreeCache.get(getGithubTreeCacheKey({ github }));
-
-	if (cached && Array.isArray(cached.tree)) {
-		return cached;
+	if (typeof manifest.contentRoot !== "string" || manifest.contentRoot.startsWith("/") || hasParentPathSegment(manifest.contentRoot)) {
+		throw new Error("The content manifest has an invalid contentRoot.");
 	}
 
-	return null;
-}
+	if (requireRevision && !/^[a-f0-9]{40,64}$/i.test(String(manifest.revision || "").trim())) {
+		throw new Error("The remote content manifest must include a full repository commit revision.");
+	}
 
-/**
- * Writes a GitHub tree cache entry.
- * @param {object} params
- * @param {object} params.github
- * @param {object} params.treeData
- * @returns {void}
- */
-function writeGithubTreeCache({ github, treeData }) {
-	githubTreeCache.set(getGithubTreeCacheKey({ github }), treeData);
-}
+	const paths = new Set();
 
-/**
- * Gets a GitHub tree cache key.
- * @param {object} params
- * @param {object} params.github
- * @returns {string}
- */
-function getGithubTreeCacheKey({ github }) {
-	return `${github.owner}/${github.repo}@${github.branch}`;
-}
+	for (let index = 0; index < manifest.files.length; index += 1) {
+		const file = manifest.files[index];
+		const path = normalizePath(file?.path || "");
 
-/**
- * Filters GitHub tree entries to markdown files.
- * @param {object} params
- * @param {Array<object>} params.tree
- * @param {string} params.rootPath
- * @returns {Array<object>}
- */
-function filterMarkdownTree({ tree, rootPath }) {
-	const items = [];
-
-	for (let index = 0; index < tree.length; index += 1) {
-		const item = tree[index];
-		const inRoot = !rootPath || item.path === rootPath || item.path.startsWith(`${rootPath}/`);
-
-		if (item.type === "blob" && inRoot && isMarkdownPath(item.path)) {
-			items.push(item);
+		if (!file || !path || path.startsWith("/") || hasParentPathSegment(path) || !isMarkdownPath(path) || !file.metadata || typeof file.metadata !== "object" || Array.isArray(file.metadata)) {
+			throw new Error(`Invalid content manifest file record at index ${index}.`);
 		}
+
+		if (!Array.isArray(file.outgoingLinks) || !Array.isArray(file.backlinks)) {
+			throw new Error(`Missing link metadata for manifest file: ${file.path}`);
+		}
+
+		if (paths.has(path)) {
+			throw new Error(`Duplicate content manifest path: ${path}`);
+		}
+
+		paths.add(path);
 	}
 
-	return items.sort(sortTreeItemByPath);
+	return manifest;
 }
 
 /**
- * Creates searchable note records.
+ * Checks a manifest path for traversal segments.
+ * @param {string} path
+ * @returns {boolean}
+ */
+function hasParentPathSegment(path) {
+	return normalizePath(path).split("/").includes("..");
+}
+
+/**
+ * Creates searchable note records from manifest metadata.
  * @param {object} params
- * @param {Array<object>} params.files
+ * @param {object} params.manifest
  * @returns {Array<object>}
  */
-function indexNotes({ files }) {
+function indexManifestNotes({ manifest }) {
 	const notes = [];
 
-	for (let index = 0; index < files.length; index += 1) {
-		const file = files[index];
-		const parsed = parseFrontmatter(file.content);
-		const visibleBody = stripObsidianComments({ markdown: parsed.body });
-		const title = parsed.metadata.title || getTitleFromMarkdown(visibleBody) || removeExtension(file.name);
+	for (let index = 0; index < manifest.files.length; index += 1) {
+		const file = manifest.files[index];
+		const path = normalizePath(file.path);
+		const name = getFileName(path);
+		const metadata = file.metadata || {};
+		const title = String(file.title || metadata.title || removeExtension(name));
 
 		notes.push({
 			...file,
+			path,
+			name,
 			title,
-			body: parsed.body,
-			visibleBody,
-			metadata: parsed.metadata,
-			links: extractWikiLinks(visibleBody),
-			searchText: `${title} ${file.path} ${visibleBody} ${getSearchMetadataText({ metadata: parsed.metadata })}`.toLowerCase()
+			metadata,
+			body: "",
+			visibleBody: "",
+			loaded: false,
+			sourceUrl: getManifestNoteSourceUrl({ manifest, path }),
+			searchText: `${title} ${path} ${file.excerpt || ""} ${getSearchMetadataText({ metadata })}`.toLowerCase()
 		});
 	}
 
 	return notes;
+}
+
+/**
+ * Gets a note source URL from the active manifest source.
+ * @param {object} params
+ * @param {object} params.manifest
+ * @param {string} params.path
+ * @returns {string}
+ */
+function getManifestNoteSourceUrl({ manifest, path }) {
+	if (manifest.sourceType === "github") {
+		return getGithubCdnUrl({ path, revision: manifest.revision, rootPath: manifest.contentRoot || "" });
+	}
+
+	return joinUrlPath({ rootPath: manifest.contentBaseUrl || "", path });
+}
+
+/**
+ * Joins URL path segments without adding a leading slash.
+ * @param {object} params
+ * @param {string} params.rootPath
+ * @param {string} params.path
+ * @returns {string}
+ */
+function joinUrlPath({ rootPath, path }) {
+	const root = String(rootPath || "").replace(/\/$/, "");
+	const item = String(path || "").replace(/^\//, "");
+	return root && item ? `${root}/${item}` : root || item;
 }
 
 /**
@@ -742,16 +649,6 @@ function bindSoundControls() {
 function addNavigationSound({ element, cue }) {
 	element.dataset.cuelumeHover = "tick";
 	element.dataset.cuelumeToggle = cue;
-}
-
-/**
- * Sorts GitHub tree items by path.
- * @param {object} first
- * @param {object} second
- * @returns {number}
- */
-function sortTreeItemByPath(first, second) {
-	return first.path.localeCompare(second.path);
 }
 
 /**
@@ -1367,7 +1264,7 @@ function renderSearch() {
 	if (!query) {
 		state.searchResultIndex = -1;
 		input.removeAttribute("aria-activedescendant");
-		container.innerHTML = `<p class="search-message">Search titles, paths, tags, and note text.</p>`;
+		container.innerHTML = `<p class="search-message">Search titles, paths, excerpts, and frontmatter.</p>`;
 		return;
 	}
 
@@ -1614,7 +1511,7 @@ function createResultButton({ note, query, index }) {
 	button.innerHTML = `
 		<span class="result-title">${escapeHtml(note.title)}</span>
 		<span class="result-path">${escapeHtml(note.path)}</span>
-		<span class="result-excerpt">${escapeHtml(getExcerpt({ text: note.visibleBody, query }))}</span>
+		<span class="result-excerpt">${escapeHtml(getExcerpt({ text: note.excerpt || "", query }))}</span>
 	`;
 	button.dataset.path = note.path;
 	addNavigationSound({ element: button, cue: "page" });
@@ -1654,7 +1551,7 @@ function renderGraph() {
 		addNavigationSound({ element: button, cue: "page" });
 		button.innerHTML = `
 			<span class="graph-title">${escapeHtml(note.title)}</span>
-			<span class="graph-path">${note.links.length} outgoing links</span>
+			<span class="graph-path">${note.outgoingLinks.length} outgoing links</span>
 		`;
 		button.addEventListener("click", handleNoteButtonClick);
 		container.append(button);
@@ -1785,6 +1682,7 @@ function openInitialNote() {
  * @returns {void}
  */
 function openHome({ updateHash = true } = {}) {
+	state.noteRequestId += 1;
 	state.activePath = "";
 	state.activeView = "home";
 	state.leftCollapsed = true;
@@ -1805,9 +1703,10 @@ function openHome({ updateHash = true } = {}) {
  * @param {object} params
  * @param {string} params.path
  * @param {boolean} [params.updateHash]
- * @returns {void}
+ * @async
+ * @returns {Promise<void>}
  */
-function openNote({ path, updateHash = true }) {
+async function openNote({ path, updateHash = true }) {
 	const note = findNoteByPath({ path });
 
 	if (!note) {
@@ -1817,13 +1716,153 @@ function openNote({ path, updateHash = true }) {
 
 	state.activePath = note.path;
 	state.activeView = "note";
+	const requestId = state.noteRequestId += 1;
 	updateLocationHash({ hash: getNoteHash({ path: note.path }), updateHash });
-	renderArticle({ note });
-	renderArticleContext({ note });
 	renderFileTree();
 	renderBookmarks();
 	renderPanels();
 	renderShell();
+
+	if (note.loaded) {
+		renderArticle({ note });
+		renderArticleContext({ note });
+		return;
+	}
+
+	renderArticleLoading({ note });
+	renderPendingArticleContext({ note });
+
+	try {
+		await loadNoteContent({ note });
+
+		if (requestId !== state.noteRequestId || state.activePath !== note.path) {
+			return;
+		}
+
+		renderArticle({ note });
+		renderArticleContext({ note });
+	} catch (error) {
+		if (requestId !== state.noteRequestId || state.activePath !== note.path) {
+			return;
+		}
+
+		renderArticleLoadError({ note, error });
+		showNavigationStatus({ message: error.message });
+	}
+}
+
+/**
+ * Loads and caches one note body on first open.
+ * @async
+ * @param {object} params
+ * @param {object} params.note
+ * @returns {Promise<object>}
+ */
+async function loadNoteContent({ note }) {
+	const cached = noteContentCache.get(note.path);
+
+	if (cached) {
+		Object.assign(note, cached, { loaded: true });
+		return note;
+	}
+
+	const pending = noteLoadPromises.get(note.path);
+
+	if (pending) {
+		await pending;
+		return note;
+	}
+
+	const loadPromise = fetchNoteContent({ note });
+	noteLoadPromises.set(note.path, loadPromise);
+
+	try {
+		const loaded = await loadPromise;
+		noteContentCache.set(note.path, loaded);
+		Object.assign(note, loaded, { loaded: true });
+		return note;
+	} finally {
+		noteLoadPromises.delete(note.path);
+	}
+}
+
+/**
+ * Fetches and parses one Markdown note.
+ * @async
+ * @param {object} params
+ * @param {object} params.note
+ * @returns {Promise<object>}
+ */
+async function fetchNoteContent({ note }) {
+	const response = await fetch(note.sourceUrl);
+
+	if (!response.ok) {
+		throw new Error(`Could not load article: ${note.path}`);
+	}
+
+	const content = await response.text();
+	const parsed = parseFrontmatter(content);
+
+	return {
+		body: parsed.body,
+		visibleBody: stripObsidianComments({ markdown: parsed.body })
+	};
+}
+
+/**
+ * Renders a loading state while a note body is fetched.
+ * @param {object} params
+ * @param {object} params.note
+ * @returns {void}
+ */
+function renderArticleLoading({ note }) {
+	const article = select(selectors.article);
+	removeArticleMaps();
+	removeArticleCodeRunners();
+	article.classList.remove("is-home", "has-header");
+	article.setAttribute("aria-busy", "true");
+	article.scrollTop = 0;
+	article.innerHTML = `
+		<div class="article-inner">
+			<h1>${escapeHtml(note.title)}</h1>
+			<p class="muted">Loading article…</p>
+		</div>
+	`;
+	renderArticleScrollState();
+}
+
+/**
+ * Renders note context that is already available from the manifest.
+ * @param {object} params
+ * @param {object} params.note
+ * @returns {void}
+ */
+function renderPendingArticleContext({ note }) {
+	renderBookmarkControl({ note });
+	renderSourceControls({ note });
+	renderMetadata({ note });
+	select(selectors.tocList).innerHTML = `<p class="muted">Loading article…</p>`;
+	renderLinkList({ selector: selectors.backlinkList, notes: getBacklinks({ note }) });
+	renderOutgoingLinks({ note });
+}
+
+/**
+ * Renders a note loading failure without leaving a blank reader.
+ * @param {object} params
+ * @param {object} params.note
+ * @param {Error} params.error
+ * @returns {void}
+ */
+function renderArticleLoadError({ note, error }) {
+	const article = select(selectors.article);
+	article.removeAttribute("aria-busy");
+	article.innerHTML = `
+		<div class="article-inner">
+			<h1>${escapeHtml(note.title)}</h1>
+			<p class="muted">${escapeHtml(error.message)}</p>
+		</div>
+	`;
+	renderArticleScrollState();
 }
 
 /**
@@ -1842,6 +1881,7 @@ function renderHome() {
 
 	removeArticleMaps();
 	removeArticleCodeRunners();
+	article.removeAttribute("aria-busy");
 	article.classList.add("is-home");
 	article.classList.remove("has-header");
 	article.scrollTop = 0;
@@ -1862,25 +1902,34 @@ function renderHome() {
  * @returns {string}
  */
 function createHomeCtaMarkup() {
-	const ctas = getHomeCtas();
+	const notes = getFeaturedNotes();
 
-	if (!ctas.length) {
+	if (!notes.length) {
 		return "";
 	}
 
 	let markup = `<div class="home-ctas" aria-label="Featured notes">`;
 
-	for (let index = 0; index < ctas.length; index += 1) {
-		const cta = ctas[index];
-		const note = findNoteByPath({ path: cta.path });
-		const description = cta.description ? `<span>${escapeHtml(cta.description)}</span>` : "";
-		const disabledClass = note ? "" : " is-disabled";
-		const noteTarget = note ? ` data-note-target="${escapeAttribute(note.path)}"` : "";
+	for (let index = 0; index < notes.length; index += 1) {
+		const note = notes[index];
+		const preview = getHomeCtaDescription({ note });
+		const description = preview
+			? `<span class="home-cta-description">${escapeHtml(preview)}</span>`
+			: "";
+		const sectionLabel = getHomeCtaSectionLabel({ path: note.path });
 
 		markup += `
-			<a class="home-cta${disabledClass}" href="${note ? getNoteHash({ path: note.path }) || "#" : "#"}"${noteTarget}>
-				<strong>${escapeHtml(cta.title)}</strong>
-				${description}
+			<a class="home-cta" href="${getNoteHash({ path: note.path }) || "#"}" data-note-target="${escapeAttribute(note.path)}">
+				<span class="home-cta-copy">
+					<span class="home-cta-meta">
+						<span>${escapeHtml(sectionLabel)}</span>
+					</span>
+					<strong>${escapeHtml(note.title)}</strong>
+					${description}
+				</span>
+				<span class="home-cta-action" aria-hidden="true">
+					<i class="fa-solid fa-arrow-right"></i>
+				</span>
 			</a>
 		`;
 	}
@@ -1890,28 +1939,50 @@ function createHomeCtaMarkup() {
 }
 
 /**
- * Gets configured home CTA cards.
+ * Gets a concise card description without repeating the note title.
+ * @param {object} params
+ * @param {object} params.note
+ * @returns {string}
+ */
+function getHomeCtaDescription({ note }) {
+	const title = String(note.title || "").trim();
+	let excerpt = String(note.excerpt || "").trim();
+
+	if (title && excerpt.toLowerCase().startsWith(title.toLowerCase())) {
+		excerpt = excerpt.slice(title.length).trim();
+	}
+
+	return excerpt ? getExcerpt({ text: excerpt, query: "" }) : "";
+}
+
+/**
+ * Gets a concise section label from a CTA note path.
+ * @param {object} params
+ * @param {string} params.path
+ * @returns {string}
+ */
+function getHomeCtaSectionLabel({ path }) {
+	const [section = ""] = normalizePath(path).split("/");
+	return section && section !== getFileName(path) ? formatMetadataKey(section) : "Featured";
+}
+
+/**
+ * Gets the first featured notes in manifest order.
  * @returns {Array<object>}
  */
-function getHomeCtas() {
-	const configured = Array.isArray(state.config.home?.ctas) ? state.config.home.ctas : [];
-	const ctas = [];
+function getFeaturedNotes() {
+	const featuredNotes = [];
 
-	for (let index = 0; index < configured.length && ctas.length < 4; index += 1) {
-		const cta = configured[index] || {};
-		const title = String(cta.title || "").trim();
-		const path = normalizePath(String(cta.path || ""));
+	for (let index = 0; index < state.notes.length && featuredNotes.length < maximumFeaturedNotes; index += 1) {
+		const note = state.notes[index];
+		const featured = getMetadataValue({ metadata: note.metadata, key: "featured" });
 
-		if (title && path) {
-			ctas.push({
-				title,
-				path,
-				description: String(cta.description || "").trim()
-			});
+		if (isTrueMetadataValue(featured)) {
+			featuredNotes.push(note);
 		}
 	}
 
-	return ctas;
+	return featuredNotes;
 }
 
 /**
@@ -2010,6 +2081,7 @@ function renderArticle({ note }) {
 	}) : "";
 	removeArticleMaps();
 	removeArticleCodeRunners();
+	article.removeAttribute("aria-busy");
 	article.classList.remove("is-home");
 	article.classList.toggle("has-header", Boolean(headerImage));
 	article.scrollTop = 0;
@@ -2792,7 +2864,7 @@ function renderSourceControls({ note }) {
 
 	copySourceButton.disabled = !articleUrl;
 	copyPublishedButton.disabled = !publishedUrl;
-	copyContentButton.disabled = !note;
+	copyContentButton.disabled = !note?.loaded;
 	obsidianButton.disabled = !obsidianUrl;
 }
 
@@ -2830,13 +2902,14 @@ function updateSourceLink({ link, href, label }) {
  */
 function renderMetadata({ note }) {
 	const list = select(selectors.metadataList);
-	const articleText = getArticleText({ markdown: note.body });
-	const wordCount = countWords(articleText);
+	const articleText = note.loaded ? getArticleText({ markdown: note.body }) : "";
+	const wordCount = note.loaded ? countWords(articleText) : Number(note.wordCount || 0);
+	const characterCount = note.loaded ? countCharacters(articleText) : Number(note.characterCount || 0);
 	const entries = [
 		["Title", note.title],
 		["Path", note.path],
 		["Words", formatNumber(wordCount)],
-		["Characters", formatNumber(countCharacters(articleText))],
+		["Characters", formatNumber(characterCount)],
 		["Reading time", formatReadingTime({ minutes: estimateReadingMinutes({ wordCount }) })],
 		["Copyright", getArticleRightsValue({ note, key: "copyright" })],
 		["License", getArticleRightsValue({ note, key: "license" })]
@@ -2997,11 +3070,11 @@ function getArticleRightsValue({ note, key }) {
  * @returns {string}
  */
 function getSearchMetadataText({ metadata }) {
-	const values = Object.values(metadata);
+	const keys = Object.keys(metadata);
 	const parts = [];
 
-	for (let index = 0; index < values.length; index += 1) {
-		parts.push(formatMetadataValue(values[index]));
+	for (let index = 0; index < keys.length; index += 1) {
+		parts.push(keys[index], formatMetadataValue(metadata[keys[index]]));
 	}
 
 	return parts.join(" ");
@@ -3282,10 +3355,11 @@ function renderLinkList({ selector, notes }) {
 function renderOutgoingLinks({ note }) {
 	const notes = [];
 
-	for (let index = 0; index < note.links.length; index += 1) {
-		const linkedNote = findNoteByWikiTarget({ target: note.links[index].target });
+	for (let index = 0; index < note.outgoingLinks.length; index += 1) {
+		const path = note.outgoingLinks[index].path;
+		const linkedNote = path ? findNoteByPath({ path }) : undefined;
 
-		if (linkedNote) {
+		if (linkedNote && !notes.includes(linkedNote)) {
 			notes.push(linkedNote);
 		}
 	}
@@ -5717,7 +5791,7 @@ function getGithubRepoUrl() {
 function getGithubArticleUrl({ path }) {
 	const repoUrl = getGithubRepoUrl();
 	const branch = String(state.config.github?.branch || "main").trim();
-	const rootPath = normalizePath(state.config.github?.rootPath || "");
+	const rootPath = normalizePath(state.manifest.contentRoot || "");
 	const notePath = normalizePath(path);
 	const fullPath = rootPath ? `${rootPath}/${notePath}` : notePath;
 
@@ -5770,10 +5844,6 @@ function getPublishedSiteUrl() {
  * @returns {string}
  */
 function getArticleDownloadUrl({ note }) {
-	if (state.config.github?.enabled) {
-		return getGithubCdnUrl({ path: note.path });
-	}
-
 	return note.sourceUrl || "";
 }
 
@@ -5782,22 +5852,23 @@ function getArticleDownloadUrl({ note }) {
  * @param {object} params
  * @param {string} params.path
  * @param {string} [params.rootPath]
+ * @param {string} [params.revision]
  * @returns {string}
  */
-function getGithubCdnUrl({ path, rootPath }) {
+function getGithubCdnUrl({ path, rootPath, revision }) {
 	const github = state.config.github || {};
 	const owner = String(github.owner || "").trim();
 	const repo = String(github.repo || "").trim();
-	const branch = String(github.branch || "main").trim();
-	const resolvedRootPath = normalizePath(rootPath === undefined ? github.rootPath || "" : rootPath);
+	const contentRevision = String(revision || state.manifest.revision || github.branch || "main").trim();
+	const resolvedRootPath = normalizePath(rootPath === undefined ? state.manifest.contentRoot || "" : rootPath);
 	const articlePath = normalizePath(path);
 	const fullPath = joinRepoPath({ rootPath: resolvedRootPath, path: articlePath });
 
-	if (!owner || !repo || !branch || !articlePath) {
+	if (!owner || !repo || !contentRevision || !articlePath) {
 		return "";
 	}
 
-	return `https://cdn.jsdelivr.net/gh/${encodePathPart(owner)}/${encodePathPart(repo)}@${encodePathPart(branch)}/${encodePath(fullPath)}`;
+	return `https://cdn.jsdelivr.net/gh/${encodePathPart(owner)}/${encodePathPart(repo)}@${encodePathPart(contentRevision)}/${encodePath(fullPath)}`;
 }
 
 /**
@@ -5816,25 +5887,24 @@ function joinRepoPath({ rootPath, path }) {
 }
 
 /**
- * Gets a raw GitHub URL for a repository path.
+ * Gets a raw GitHub content URL without using the REST API.
  * @param {object} params
+ * @param {object} params.github
  * @param {string} params.path
+ * @param {string} params.revision
  * @returns {string}
  */
-function getGithubRawUrl({ path }) {
-	const github = state.config.github || {};
+function getGithubRawContentUrl({ github, path, revision }) {
 	const owner = String(github.owner || "").trim();
 	const repo = String(github.repo || "").trim();
-	const branch = String(github.branch || "main").trim();
-	const rootPath = normalizePath(github.rootPath || "");
-	const assetPath = normalizePath(path);
-	const fullPath = rootPath ? `${rootPath}/${assetPath}` : assetPath;
+	const contentRevision = String(revision || github.branch || "main").trim();
+	const contentPath = normalizePath(path);
 
-	if (!owner || !repo || !branch || !assetPath) {
+	if (!owner || !repo || !contentRevision || !contentPath) {
 		return "";
 	}
 
-	return `https://raw.githubusercontent.com/${encodePathPart(owner)}/${encodePathPart(repo)}/${encodePathPart(branch)}/${encodePath(fullPath)}`;
+	return `https://raw.githubusercontent.com/${encodePathPart(owner)}/${encodePathPart(repo)}/${encodePathPart(contentRevision)}/${encodePath(contentPath)}`;
 }
 
 /**
@@ -6004,24 +6074,6 @@ function parseFrontmatterValue(value) {
 }
 
 /**
- * Extracts wiki links.
- * @param {string} markdown
- * @returns {Array<object>}
- */
-function extractWikiLinks(markdown) {
-	const links = [];
-	const pattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
-	let match = pattern.exec(markdown);
-
-	while (match) {
-		links.push({ target: match[1].trim() });
-		match = pattern.exec(markdown);
-	}
-
-	return links;
-}
-
-/**
  * Finds backlinks for a note.
  * @param {object} params
  * @param {object} params.note
@@ -6030,20 +6082,11 @@ function extractWikiLinks(markdown) {
 function getBacklinks({ note }) {
 	const backlinks = [];
 
-	for (let index = 0; index < state.notes.length; index += 1) {
-		const candidate = state.notes[index];
+	for (let index = 0; index < note.backlinks.length; index += 1) {
+		const candidate = findNoteByPath({ path: note.backlinks[index] });
 
-		if (candidate.path === note.path) {
-			continue;
-		}
-
-		for (let linkIndex = 0; linkIndex < candidate.links.length; linkIndex += 1) {
-			const linkedNote = findNoteByWikiTarget({ target: candidate.links[linkIndex].target });
-
-			if (linkedNote?.path === note.path) {
-				backlinks.push(candidate);
-				break;
-			}
+		if (candidate) {
+			backlinks.push(candidate);
 		}
 	}
 
@@ -6075,7 +6118,7 @@ function findNoteByPath({ path }) {
  * @returns {object|undefined}
  */
 function findNoteByWikiTarget({ target }) {
-	const normalizedTarget = normalizePath(target);
+	const normalizedTarget = normalizePath(String(target || "").split("#")[0].split("^")[0]);
 	const withExtension = isMarkdownPath(normalizedTarget) ? normalizedTarget : `${normalizedTarget}.md`;
 	const targetBase = removeExtension(getFileName(normalizedTarget)).toLowerCase();
 
@@ -6090,25 +6133,6 @@ function findNoteByWikiTarget({ target }) {
 	}
 
 	return undefined;
-}
-
-/**
- * Gets title from markdown.
- * @param {string} markdown
- * @returns {string}
- */
-function getTitleFromMarkdown(markdown) {
-	const lines = markdown.split("\n");
-
-	for (let index = 0; index < lines.length; index += 1) {
-		const match = lines[index].match(/^#\s+(.+)$/);
-
-		if (match) {
-			return match[1].trim();
-		}
-	}
-
-	return "";
 }
 
 /**
@@ -7354,4 +7378,8 @@ function renderError({ error }) {
 	showNavigationStatus({ message: error.message });
 }
 
-await init();
+try {
+	await init();
+} finally {
+	dismissStartupAnimation();
+}

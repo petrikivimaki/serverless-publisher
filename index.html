@@ -59,6 +59,7 @@
 		<link rel="icon" type="image/png" sizes="512x512" href="images/papyrus-mark.png" />
 		<link rel="apple-touch-icon" href="images/papyrus-mark.png" />
         <title>Papyrus</title>
+		<script type="module" blocking="render" src="scripts/startup.js?v=3"></script>
         <link
             rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
@@ -71,8 +72,8 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-		<link rel="stylesheet" href="styles/main.css?v=27" />
-		<script type="module" src="scripts/app.js?v=22"></script>
+		<link rel="stylesheet" href="styles/main.css?v=29" />
+		<script type="module" src="scripts/app.js?v=30"></script>
     </head>
     <body>
 		<div class="app-shell is-left-collapsed is-right-collapsed">
@@ -194,7 +195,7 @@
                             <input
                                 type="search"
                                 data-search-input
-                                placeholder="Search everything..."
+								placeholder="Search notes..."
                                 aria-label="Search vault"
                                 role="combobox"
                                 aria-autocomplete="list"

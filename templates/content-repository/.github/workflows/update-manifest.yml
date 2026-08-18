@@ -1,0 +1,49 @@
+name: Update content manifest
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "notes/**/*.md"
+      - "notes/**/*.mdx"
+      - "scripts/generate-content-manifest.mjs"
+      - ".github/workflows/update-manifest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: content-manifest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out content
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Generate manifest
+        run: node scripts/generate-content-manifest.mjs --content-root notes --output manifest.json --revision "$GITHUB_SHA"
+
+      - name: Commit updated manifest
+        run: |
+          if git diff --quiet -- manifest.json; then
+            echo "Manifest is already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "chore: update content manifest"
+          git push
