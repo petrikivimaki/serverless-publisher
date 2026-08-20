@@ -257,6 +257,7 @@
 			"type": "object",
 			"additionalProperties": false,
 			"required": [
+				"primaryMenuSide",
 				"contentWidth",
 				"fontFamily",
 				"fontSize",
@@ -267,6 +268,14 @@
 				"firstDayOfWeek"
 			],
 			"properties": {
+				"primaryMenuSide": {
+					"type": "string",
+					"enum": [
+						"left",
+						"right"
+					],
+					"description": "Side occupied by the primary navigation menu. This is controlled by site configuration and cannot be overridden by readers."
+				},
 				"contentWidth": {
 					"type": "integer",
 					"minimum": 560,

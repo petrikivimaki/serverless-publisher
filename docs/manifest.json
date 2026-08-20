@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"generatedAt": "2026-08-18T15:45:14.441Z",
+	"generatedAt": "2026-08-20T19:09:22.233Z",
 	"revision": "local",
 	"contentRoot": "",
 	"files": [
@@ -345,10 +345,10 @@
 				"workflow/setup.md"
 			],
 			"excerpt": "Interface and Reading Controls Papyrus uses a three-part reading shell: a primary menu for browsing the vault, a central reading workspace, and a secondary menu for the active note's context. Both side menus are optional, so the article can use the entire window when they are cl…",
-			"wordCount": 1395,
-			"characterCount": 9033,
-			"size": 9320,
-			"hash": "847d57434fea832bfd333aaeece9e5f073bb230854cb9a7538ac5dbdd9e31c7a"
+			"wordCount": 1483,
+			"characterCount": 9657,
+			"size": 9950,
+			"hash": "8254354fa9eea01b4f0eb879c5ce11fb9ba2e149b87865bbf495d040d920f15a"
 		},
 		{
 			"path": "reference/linktree.md",
@@ -599,10 +599,10 @@
 				"start/papyrus.md"
 			],
 			"excerpt": "Setup Workflow This is the short path from a local vault to a public site. 1. Clone Papyrus Create your own copy of the Papyrus repository on GitHub, then clone it: Serve it locally with any static file server: Open http://localhost:4173/. 2. Configure GitHub Pages In the reposi…",
-			"wordCount": 564,
-			"characterCount": 3913,
-			"size": 4492,
-			"hash": "fff7dff02877a7a5cbc0f404481b1a951d2e313992ae571911cbeee972461243"
+			"wordCount": 604,
+			"characterCount": 4175,
+			"size": 4762,
+			"hash": "e6696a963cd0d957274e7c8899a7982c4b8628b636881ec27fa20ed1a276d049"
 		}
 	]
 }

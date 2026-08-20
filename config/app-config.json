@@ -136,6 +136,7 @@
     "fadeMs": 420
   },
   "appearance": {
+    "primaryMenuSide": "left",
     "contentWidth": 820,
     "fontFamily": "modern",
     "fontSize": 18,

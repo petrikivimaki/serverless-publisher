@@ -36,14 +36,15 @@ const state = {
 	fontSize: 18,
 	lineHeight: 1.68,
 	linktreeClockInterval: 0,
-	leftCollapsed: true,
+	primaryMenuCollapsed: true,
+	primaryMenuSide: "left",
 	focusTimerDurationMinutes: 5,
 	focusTimerEndsAt: 0,
 	focusTimerInterval: 0,
 	mathJaxPromise: null,
 	mapLibrePromise: null,
 	maps: [],
-	rightCollapsed: true,
+	secondaryMenuCollapsed: true,
 	settingsOpen: false,
 	soundEnabled: true,
 	qrCodeTimer: 0,
@@ -177,7 +178,6 @@ const selectors = {
 	fontSizeInput: "[data-font-size]",
 	fontSizeValue: "[data-font-size-value]",
 	graphList: "[data-graph-list]",
-	leftPanel: "[data-left-panel]",
 	lineHeightInput: "[data-line-height]",
 	lineHeightValue: "[data-line-height-value]",
 	focusTimerDuration: "[data-timer-duration]",
@@ -193,7 +193,6 @@ const selectors = {
 	qrCodeSummary: "[data-qr-code-summary]",
 	qrSelectionButton: "[data-action='qr-selection']",
 	quickSettings: "[data-quick-settings]",
-	rightPanel: "[data-right-panel]",
 	searchInput: "[data-search-input]",
 	searchResults: "[data-search-results]",
 	scrollTopButton: "[data-action='scroll-top']",
@@ -537,14 +536,14 @@ function bindEvents() {
 		button.addEventListener("click", handlePanelButtonClick);
 	}
 
-	const rightPanelButtons = selectAll("[data-action='toggle-right']");
+	const secondaryMenuButtons = selectAll("[data-action='toggle-secondary-menu']");
 
-	for (let index = 0; index < rightPanelButtons.length; index += 1) {
-		rightPanelButtons[index].addEventListener("click", toggleRightPanel);
+	for (let index = 0; index < secondaryMenuButtons.length; index += 1) {
+		secondaryMenuButtons[index].addEventListener("click", toggleSecondaryMenu);
 	}
 
 	select("[data-action='open-home']").addEventListener("click", openHome);
-	select("[data-action='close-left']").addEventListener("click", closeLeftPanel);
+	select("[data-action='close-primary-menu']").addEventListener("click", closePrimaryMenu);
 	select("[data-action='scroll-top']").addEventListener("click", scrollArticleToTop);
 	select("[data-action='toggle-settings']").addEventListener("click", toggleQuickSettings);
 	select("[data-action='cycle-focus-timer']").addEventListener("click", cycleFocusTimerDuration);
@@ -689,7 +688,7 @@ function renderPanels() {
 	}
 
 	for (let index = 0; index < buttons.length; index += 1) {
-		const isActive = !state.leftCollapsed && buttons[index].dataset.panel === state.activePanel;
+		const isActive = !state.primaryMenuCollapsed && buttons[index].dataset.panel === state.activePanel;
 		buttons[index].classList.toggle("is-active", isActive);
 	}
 
@@ -705,15 +704,15 @@ function renderPanels() {
 function setPanel({ panel }) {
 	closeQuickSettings();
 
-	if (!state.leftCollapsed && state.activePanel === panel) {
-		state.leftCollapsed = true;
+	if (!state.primaryMenuCollapsed && state.activePanel === panel) {
+		state.primaryMenuCollapsed = true;
 		renderPanels();
 		renderShell();
 		return;
 	}
 
 	state.activePanel = panel;
-	state.leftCollapsed = false;
+	state.primaryMenuCollapsed = false;
 	renderPanels();
 	renderShell();
 
@@ -726,8 +725,8 @@ function setPanel({ panel }) {
  * Closes the primary side menu.
  * @returns {void}
  */
-function closeLeftPanel() {
-	state.leftCollapsed = true;
+function closePrimaryMenu() {
+	state.primaryMenuCollapsed = true;
 	renderPanels();
 	renderShell();
 }
@@ -1685,8 +1684,8 @@ function openHome({ updateHash = true } = {}) {
 	state.noteRequestId += 1;
 	state.activePath = "";
 	state.activeView = "home";
-	state.leftCollapsed = true;
-	state.rightCollapsed = true;
+	state.primaryMenuCollapsed = true;
+	state.secondaryMenuCollapsed = true;
 	closeQuickSettings();
 	clearQrCodeBlock();
 	updateLocationHash({ hash: "", updateHash });
@@ -6327,15 +6326,15 @@ function escapeAttribute(value) {
 }
 
 /**
- * Toggles the right panel.
+ * Toggles the secondary menu.
  * @returns {void}
  */
-function toggleRightPanel() {
+function toggleSecondaryMenu() {
 	if (!state.activePath) {
 		return;
 	}
 
-	state.rightCollapsed = !state.rightCollapsed;
+	state.secondaryMenuCollapsed = !state.secondaryMenuCollapsed;
 	renderShell();
 }
 
@@ -6514,13 +6513,19 @@ function stopFocusTimer() {
  */
 function renderShell() {
 	const shell = select(selectors.appShell);
-	const rightToggles = selectAll("[data-action='toggle-right']");
-	shell.classList.toggle("is-left-collapsed", state.leftCollapsed);
-	shell.classList.toggle("is-right-collapsed", state.rightCollapsed);
+	const secondaryMenuToggles = selectAll("[data-action='toggle-secondary-menu']");
+	const isLayoutPending = shell.classList.contains("is-menu-layout-pending");
+	shell.dataset.primaryMenuSide = state.primaryMenuSide;
+	shell.classList.toggle("is-primary-menu-collapsed", state.primaryMenuCollapsed);
+	shell.classList.toggle("is-secondary-menu-collapsed", state.secondaryMenuCollapsed);
 
-	for (let index = 0; index < rightToggles.length; index += 1) {
-		rightToggles[index].hidden = !state.activePath;
-		rightToggles[index].classList.toggle("is-active", !state.rightCollapsed);
+	if (isLayoutPending) {
+		window.requestAnimationFrame(() => shell.classList.remove("is-menu-layout-pending"));
+	}
+
+	for (let index = 0; index < secondaryMenuToggles.length; index += 1) {
+		secondaryMenuToggles[index].hidden = !state.activePath;
+		secondaryMenuToggles[index].classList.toggle("is-active", !state.secondaryMenuCollapsed);
 	}
 
 	scheduleArticleScrollState();
@@ -6542,6 +6547,7 @@ function loadAppearance() {
 	}
 
 	state.theme = getValidTheme(stored.theme || config.theme || "light") || "light";
+	state.primaryMenuSide = getPrimaryMenuSide({ value: config.primaryMenuSide });
 	state.soundEnabled = getBooleanPreference({
 		storedValue: stored.soundEnabled,
 		configuredValue: config.soundEnabled,
@@ -6564,6 +6570,16 @@ function loadAppearance() {
 		minimum: 560,
 		maximum: 960
 	});
+}
+
+/**
+ * Resolves the configured side for the primary menu.
+ * @param {object} params
+ * @param {*} params.value
+ * @returns {"left"|"right"}
+ */
+function getPrimaryMenuSide({ value }) {
+	return value === "right" ? "right" : "left";
 }
 
 /**
@@ -7139,7 +7155,7 @@ async function createQrCodeFromSelection() {
 }
 
 /**
- * Shows a temporary QR code block in the right panel.
+ * Shows a temporary QR code block in the secondary menu.
  * @param {object} params
  * @param {string} params.dataUrl
  * @param {string} params.text
@@ -7153,7 +7169,7 @@ function showQrCodeBlock({ dataUrl, text }) {
 	image.src = dataUrl;
 	summary.textContent = `${formatNumber(countCharacters(text))} selected characters`;
 	block.hidden = false;
-	state.rightCollapsed = false;
+	state.secondaryMenuCollapsed = false;
 	renderShell();
 	window.clearTimeout(state.qrCodeTimer);
 	state.qrCodeTimer = window.setTimeout(clearQrCodeBlock, qrCodeVisibleMs);

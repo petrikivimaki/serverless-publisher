@@ -212,15 +212,23 @@ button {
 	overscroll-behavior: none;
 }
 
-.app-shell.is-left-collapsed {
+.app-shell.is-primary-menu-collapsed {
 	grid-template-columns: 0 minmax(0, 1fr) minmax(250px, 300px);
 }
 
-.app-shell.is-right-collapsed {
+.app-shell.is-secondary-menu-collapsed {
 	grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) 0;
 }
 
-.app-shell.is-left-collapsed.is-right-collapsed {
+.app-shell[data-primary-menu-side="right"].is-primary-menu-collapsed {
+	grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) 0;
+}
+
+.app-shell[data-primary-menu-side="right"].is-secondary-menu-collapsed {
+	grid-template-columns: 0 minmax(0, 1fr) minmax(250px, 300px);
+}
+
+.app-shell.is-primary-menu-collapsed.is-secondary-menu-collapsed {
 	grid-template-columns: 0 minmax(0, 1fr) 0;
 }
 
@@ -364,38 +372,57 @@ button {
 	width: 14px;
 }
 
-.left-panel,
-.right-panel {
+.primary-menu,
+.secondary-menu {
 	min-width: 0;
 	overflow: hidden;
-	border-right: 1px solid var(--line);
 	background: var(--surface);
 }
 
-.left-panel {
+.primary-menu {
 	display: grid;
 	grid-column: 1;
 	grid-row: 1;
 	grid-template-rows: auto auto minmax(0, 1fr);
+	border-right: 1px solid var(--line);
 }
 
-.right-panel {
+.secondary-menu {
 	grid-column: 3;
 	grid-row: 1;
 	overflow: auto;
 	overscroll-behavior: none;
+	border-left: 1px solid var(--line);
+}
+
+.app-shell[data-primary-menu-side="right"] .primary-menu {
+	grid-column: 3;
 	border-right: 0;
 	border-left: 1px solid var(--line);
 }
 
-.app-shell.is-left-collapsed .left-panel {
+.app-shell[data-primary-menu-side="right"] .secondary-menu {
+	grid-column: 1;
+	border-right: 1px solid var(--line);
+	border-left: 0;
+}
+
+.app-shell.is-primary-menu-collapsed .primary-menu {
 	visibility: hidden;
 	transform: translateX(-105%);
 }
 
-.app-shell.is-right-collapsed .right-panel {
+.app-shell.is-secondary-menu-collapsed .secondary-menu {
 	visibility: hidden;
 	transform: translateX(105%);
+}
+
+.app-shell[data-primary-menu-side="right"].is-primary-menu-collapsed .primary-menu {
+	transform: translateX(105%);
+}
+
+.app-shell[data-primary-menu-side="right"].is-secondary-menu-collapsed .secondary-menu {
+	transform: translateX(-105%);
 }
 
 .panel-header {
@@ -3266,9 +3293,9 @@ input:focus-visible {
 
 @media (max-width: 960px) {
 	.app-shell,
-	.app-shell.is-left-collapsed,
-	.app-shell.is-right-collapsed,
-	.app-shell.is-left-collapsed.is-right-collapsed {
+	.app-shell.is-primary-menu-collapsed,
+	.app-shell.is-secondary-menu-collapsed,
+	.app-shell.is-primary-menu-collapsed.is-secondary-menu-collapsed {
 		display: block;
 	}
 
@@ -3277,8 +3304,8 @@ input:focus-visible {
 		height: 100dvh;
 	}
 
-	.left-panel,
-	.right-panel {
+	.primary-menu,
+	.secondary-menu {
 		position: fixed;
 		top: 0;
 		bottom: 0;
@@ -3289,27 +3316,52 @@ input:focus-visible {
 		transition: transform 180ms ease;
 	}
 
-	.left-panel {
+	.app-shell.is-menu-layout-pending .primary-menu,
+	.app-shell.is-menu-layout-pending .secondary-menu {
+		transition: none;
+	}
+
+	.primary-menu {
 		left: 0;
 		transform: translateX(0);
 	}
 
-	.right-panel {
+	.secondary-menu {
 		right: 0;
 		transform: translateX(0);
 		box-shadow: -12px 0 34px rgb(0,0,0,0.14);
 	}
 
-	.app-shell.is-left-collapsed .left-panel {
+	.app-shell[data-primary-menu-side="right"] .primary-menu {
+		right: 0;
+		left: auto;
+		box-shadow: -12px 0 34px rgb(0,0,0,0.14);
+	}
+
+	.app-shell[data-primary-menu-side="right"] .secondary-menu {
+		right: auto;
+		left: 0;
+		box-shadow: 12px 0 34px rgb(0,0,0,0.14);
+	}
+
+	.app-shell.is-primary-menu-collapsed .primary-menu {
 		display: block;
 		visibility: visible;
 		transform: translateX(-105%);
 	}
 
-	.app-shell.is-right-collapsed .right-panel {
+	.app-shell.is-secondary-menu-collapsed .secondary-menu {
 		display: block;
 		visibility: visible;
 		transform: translateX(105%);
+	}
+
+	.app-shell[data-primary-menu-side="right"].is-primary-menu-collapsed .primary-menu {
+		transform: translateX(105%);
+	}
+
+	.app-shell[data-primary-menu-side="right"].is-secondary-menu-collapsed .secondary-menu {
+		transform: translateX(-105%);
 	}
 
 	.floating-navigation button span {

@@ -72,12 +72,12 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-		<link rel="stylesheet" href="styles/main.css?v=32" />
-		<script type="module" src="scripts/app.js?v=32"></script>
+		<link rel="stylesheet" href="styles/main.css?v=34" />
+		<script type="module" src="scripts/app.js?v=34"></script>
     </head>
     <body>
-		<div class="app-shell is-left-collapsed is-right-collapsed">
-			<aside class="left-panel" data-left-panel>
+		<div class="app-shell is-menu-layout-pending is-primary-menu-collapsed is-secondary-menu-collapsed" data-primary-menu-side="left">
+			<aside class="primary-menu" data-primary-menu>
 				<header class="panel-header panel-brand-header">
 					<div class="panel-brand">
 						<img
@@ -93,7 +93,7 @@
 						<button
 							class="icon-button"
 							type="button"
-							data-action="close-left"
+							data-action="close-primary-menu"
 							data-cuelume-hover="tick"
 							data-cuelume-toggle="droplet"
 							aria-label="Close primary menu"
@@ -333,7 +333,7 @@
                 </article>
             </main>
 
-			<aside class="right-panel" data-right-panel>
+			<aside class="secondary-menu" data-secondary-menu>
 				<header class="panel-header">
 					<div>
 						<p class="eyebrow">Context</p>
@@ -342,7 +342,7 @@
 					<button
 						class="icon-button"
 						type="button"
-						data-action="toggle-right"
+						data-action="toggle-secondary-menu"
 						data-cuelume-hover="tick"
 						data-cuelume-toggle="droplet"
 						aria-label="Close secondary menu"
@@ -643,7 +643,7 @@
 					<span>Top</span>
 				</button>
 				<span class="navigation-divider" aria-hidden="true"></span>
-				<button type="button" data-action="toggle-right" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Article details" title="Article details">
+				<button type="button" data-action="toggle-secondary-menu" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Article details" title="Article details">
 					<i class="fa-solid fa-sliders" aria-hidden="true"></i>
 					<span>Details</span>
 				</button>
