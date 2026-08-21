@@ -72,8 +72,8 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-		<link rel="stylesheet" href="styles/main.css?v=34" />
-		<script type="module" src="scripts/app.js?v=34"></script>
+		<link rel="stylesheet" href="styles/main.css?v=37" />
+		<script type="module" src="scripts/app.js?v=38"></script>
     </head>
     <body>
 		<div class="app-shell is-menu-layout-pending is-primary-menu-collapsed is-secondary-menu-collapsed" data-primary-menu-side="left">
@@ -110,9 +110,6 @@
 					</button>
 					<button type="button" data-panel="search" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Search" title="Search">
 						<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-					</button>
-					<button type="button" data-panel="calendar" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Calendar" title="Calendar">
-						<i class="fa-regular fa-calendar-days" aria-hidden="true"></i>
 					</button>
 					<button type="button" data-panel="bookmarks" data-cuelume-hover="tick" data-cuelume-toggle aria-label="Bookmarks" title="Bookmarks">
 						<i class="fa-regular fa-bookmark" aria-hidden="true"></i>
@@ -211,14 +208,7 @@
                         role="listbox"
                         aria-label="Search results"
                     ></div>
-                </section>
-
-                <section
-                    class="panel-view"
-                    data-view="calendar"
-                    aria-label="Calendar"
-                >
-                    <div class="calendar-panel">
+                    <section class="calendar-panel" aria-label="Calendar">
                         <div class="calendar-toolbar">
                             <button
                                 class="icon-button"
@@ -264,7 +254,7 @@
                             class="calendar-grid calendar-days"
                             data-calendar-days
                         ></div>
-                    </div>
+                    </section>
                 </section>
 
                 <section

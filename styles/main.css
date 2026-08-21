@@ -259,25 +259,25 @@ button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
-	height: 34px;
-	padding: 0 10px;
-	border: 1px solid var(--line);
-	border-radius: 7px;
-	background: var(--surface);
-	color: var(--text);
-	font-size: 13px;
-	font-weight: 700;
+	height: 28px;
+	padding: 0 6px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: 650;
 }
 
 .today-button:hover {
-	background: var(--surface-muted);
+	background: transparent;
+	color: var(--text);
 }
 
 .today-button .calendar-current {
-	color: var(--text-muted);
-	font-size: 13px;
-	font-weight: 700;
+	color: inherit;
+	font-size: inherit;
+	font-weight: inherit;
 }
 
 .danger-button,
@@ -478,7 +478,7 @@ button {
 	position: relative;
 	isolation: isolate;
 	display: grid;
-	grid-template-columns: repeat(6, minmax(0, 1fr));
+	grid-template-columns: repeat(5, minmax(0, 1fr));
 	gap: 3px;
 	margin: 10px;
 	padding: 4px;
@@ -493,7 +493,7 @@ button {
 	left: 4px;
 	z-index: 0;
 	box-sizing: border-box;
-	width: calc((100% - 23px) / 6);
+	width: calc((100% - 20px) / 5);
 	border: 1px solid var(--line);
 	border-radius: 7px;
 	background: var(--surface);
@@ -528,10 +528,6 @@ button {
 
 .panel-tabs:has(button:nth-child(5).is-active)::before {
 	transform: translateX(calc(400% + 12px));
-}
-
-.panel-tabs:has(button:nth-child(6).is-active)::before {
-	transform: translateX(calc(500% + 15px));
 }
 
 .panel-tabs button {
@@ -590,6 +586,12 @@ button {
 }
 
 .panel-view[data-view="files"].is-active {
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	overflow: hidden;
+}
+
+.panel-view[data-view="search"].is-active {
 	display: grid;
 	grid-template-rows: auto minmax(0, 1fr) auto;
 	overflow: hidden;
@@ -748,6 +750,12 @@ button {
 	padding-left: 12px;
 }
 
+.panel-view[data-view="search"] .search-results {
+	min-height: 0;
+	overflow: auto;
+	overscroll-behavior: none;
+}
+
 .tree-group {
 	margin: 2px 0;
 }
@@ -840,7 +848,8 @@ button {
 .note-link-path,
 .result-path,
 .graph-path,
-.result-excerpt {
+.result-excerpt,
+.result-calendar-metadata {
 	overflow: hidden;
 	color: var(--text-muted);
 	font-size: 12px;
@@ -848,49 +857,114 @@ button {
 	white-space: nowrap;
 }
 
+.result-calendar-metadata {
+	color: var(--positive);
+	font-size: 10px;
+	font-weight: 700;
+}
+
 .calendar-panel {
 	display: grid;
-	gap: 12px;
+	gap: 5px;
+	padding: 8px 12px 12px;
+	border-top: 1px solid var(--line);
 }
 
 .calendar-toolbar {
 	display: grid;
-	grid-template-columns: 34px minmax(0, 1fr) 34px;
-	gap: 6px;
+	grid-template-columns: 28px minmax(0, 1fr) 28px;
+	gap: 4px;
 	align-items: center;
+}
+
+.calendar-toolbar .icon-button {
+	width: 28px;
+	height: 28px;
+	font-size: 11px;
+}
+
+.calendar-toolbar .today-button {
+	min-height: 28px;
 }
 
 .calendar-grid {
 	display: grid;
-	grid-template-columns: repeat(7, minmax(0, 1fr));
-	gap: 4px;
+	grid-template-columns: 22px repeat(7, minmax(0, 1fr));
+	gap: 2px;
 }
 
 .calendar-weekdays span {
 	display: grid;
 	place-items: center;
-	height: 24px;
+	height: 18px;
 	color: var(--text-muted);
-	font-size: 11px;
+	font-size: 9px;
 	font-weight: 800;
 	text-transform: uppercase;
 }
 
-.calendar-day {
+.calendar-weekdays .calendar-week-heading,
+.calendar-week-number {
+	color: var(--text-muted);
+	font-size: 9px;
+	font-weight: 750;
+}
+
+.calendar-week-number {
 	display: grid;
 	place-items: center;
-	aspect-ratio: 1;
+	height: 25px;
+}
+
+.calendar-day {
+	position: relative;
+	display: grid;
+	place-items: center;
+	height: 25px;
 	min-width: 0;
 	border: 1px solid transparent;
-	border-radius: 7px;
+	border-radius: 6px;
 	background: transparent;
 	color: var(--text);
-	font-size: 13px;
+	font-size: 11px;
 	font-weight: 650;
 }
 
-.calendar-day:hover {
+.calendar-day.has-calendar-notes {
 	background: var(--surface-muted);
+}
+
+.calendar-day:not(:disabled):hover {
+	background: var(--surface-muted);
+}
+
+.calendar-day:disabled {
+	cursor: default;
+}
+
+.calendar-date-markers {
+	position: absolute;
+	right: 0;
+	bottom: 2px;
+	left: 0;
+	display: flex;
+	justify-content: center;
+	gap: 2px;
+}
+
+.calendar-date-marker {
+	display: block;
+	width: 3px;
+	height: 3px;
+	border-radius: 50%;
+}
+
+.calendar-date-marker.is-published {
+	background: var(--positive);
+}
+
+.calendar-date-marker.is-updated {
+	background: var(--accent);
 }
 
 .calendar-day.is-today {

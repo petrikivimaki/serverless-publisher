@@ -3,6 +3,9 @@ title: What Papyrus Does
 status: draft
 featured: true
 tags: papyrus, github-pages, obsidian
+edition: 2
+published: 2026-08-21
+updated: 2026-08-21T12:00:00+03:00
 ---
 
 # What Papyrus Does

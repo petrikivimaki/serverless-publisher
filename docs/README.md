@@ -4,6 +4,9 @@ status: demo
 tags: papyrus, documentation, markdown
 authors:
   - Papyrus Team
+edition: 1
+published: 2026-08-21T09:00:00+03:00
+updated: 2026-08-21T15:30:00+03:00
 ---
 
 # Papyrus Docs

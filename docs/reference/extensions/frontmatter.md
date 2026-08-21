@@ -17,6 +17,8 @@ authors:
   - Papyrus Team
 status: draft
 featured: true
+published: 2026-08-18
+updated: 2026-08-21T14:30:00+03:00
 image: images/example-header.jpeg
 grayscale: true
 copyright: (c) 2026 Papyrus Team
@@ -35,6 +37,8 @@ The table lists every property with a defined role in the current implementation
 | `authors` | Plain text, inline array, or list | Adds searchable author names. | Appears when included in `metadata.allowedKeys`; included by default. |
 | `status` | Plain text | Adds a searchable workflow label such as `draft`, `review`, or `published`. | Appears when included in `metadata.allowedKeys`; included by default. |
 | `featured` | `true` or `false` | Makes the note eligible for a home-page card when `true`. Papyrus displays the first three featured notes in manifest order. | Hidden by default; add `featured` to `metadata.allowedKeys` to also show it. |
+| `published` | ISO date or timestamp beginning with `YYYY-MM-DD` | Highlights the authored date in the Search calendar and supports property-scoped search. | Hidden by default; add `published` to `metadata.allowedKeys` to also show it. |
+| `updated` | ISO date or timestamp beginning with `YYYY-MM-DD` | Highlights the authored date in the Search calendar and supports property-scoped search. | Hidden by default; add `updated` to `metadata.allowedKeys` to also show it. |
 | `image` | Relative asset path, root-relative path, HTTP(S) URL, or data URL | Creates the full-width article header image. Relative GitHub-vault paths use the configured `github.assetRootPath`. | Hidden by default; add `image` to `metadata.allowedKeys` to also show its raw value. |
 | `grayscale` | `true` or `false` | Applies a grayscale filter to the article header image when the value is `true`. It has no visible effect without `image`. | Hidden by default; add `grayscale` to `metadata.allowedKeys` to also show it. |
 | `copyright` | Plain text | Overrides `contentRights.copyright` for the note. | Always appears in the generated **Copyright** row, using the global value or `Not specified` as fallback. |
@@ -61,6 +65,36 @@ authors:
 ```
 
 Array values are displayed and indexed as comma-separated text. Nested objects, multiline scalar operators, anchors, and other advanced YAML features are not interpreted.
+
+Calendar dates use the leading ISO date exactly as authored, so a timestamp's timezone does not shift its visible day:
+
+```md
+published: 2026-08-18
+updated: 2026-08-21T14:30:00+03:00
+```
+
+Searching for `2026-08-21` without a prefix matches the date across every frontmatter property, including both `published` and `updated`. Clicking a highlighted calendar day inserts this plain ISO date automatically, allowing every matching note to appear when several share a date. Use `published:2026-08-21` or `updated:2026-08-21` when only one lifecycle property should match.
+
+## Property-scoped search
+
+Any frontmatter property present in the loaded manifest can scope a search with `property:value`. Property names are case-insensitive and may contain hyphens or underscores. Filters can be combined with ordinary search text or with additional property filters:
+
+```text
+tags:papyrus
+authors:"Papyrus Team"
+featured:true markdown
+published:2026-08-21 tags:papyrus
+```
+
+Matching respects the value shape preserved by the manifest:
+
+- Strings use case-insensitive partial matching, so an ISO date matches the beginning of a timestamp.
+- Arrays match when any individual member satisfies the filter; quote a value when it contains spaces.
+- Booleans accept exact `true` or `false` values.
+- Numbers use numeric equality rather than partial text matching.
+- `null` matches an explicit null value.
+
+An unrecognized prefix remains part of the ordinary full-text query instead of silently filtering out every note.
 
 ## Reader details allowlist
 

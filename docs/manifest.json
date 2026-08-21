@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"generatedAt": "2026-08-20T19:09:22.233Z",
+	"generatedAt": "2026-08-21T14:19:53.185Z",
 	"revision": "local",
 	"contentRoot": "",
 	"files": [
@@ -13,7 +13,10 @@
 				"tags": "papyrus, documentation, markdown",
 				"authors": [
 					"Papyrus Team"
-				]
+				],
+				"edition": 1,
+				"published": "2026-08-21T09:00:00+03:00",
+				"updated": "2026-08-21T15:30:00+03:00"
 			},
 			"outgoingLinks": [
 				{
@@ -56,8 +59,8 @@
 			"excerpt": "Papyrus Docs Papyrus turns a folder of Markdown files into a public, Obsidian-style knowledge base for GitHub Pages. This docs vault introduces the project and also acts as live sample content for testing search, file browsing, backlinks, metadata, source comments, blockquotes,…",
 			"wordCount": 286,
 			"characterCount": 1924,
-			"size": 3174,
-			"hash": "066227cfbd622895e766c1129c72d5022b0ae7a26489a841545ea15bb8c6fe6d"
+			"size": 3257,
+			"hash": "ce5113e7ed1a2e843b7b7e9ac89abcd706ea0197bbb1dba33f9a85f33e586c80"
 		},
 		{
 			"path": "reference/extensions/callouts.md",
@@ -130,10 +133,10 @@
 				"workflow/setup.md"
 			],
 			"excerpt": "Frontmatter Properties Frontmatter is note-level metadata placed between --- delimiters at the very beginning of a Markdown file. The content-manifest generator copies every property into the note record, and Papyrus uses that manifest metadata for article identity, search, read…",
-			"wordCount": 615,
-			"characterCount": 3967,
-			"size": 4762,
-			"hash": "9486efbe638e5783ed7913fc7132ea427ee230dbd732e077ea8fbea1c7c86db2"
+			"wordCount": 876,
+			"characterCount": 5718,
+			"size": 6798,
+			"hash": "529bc7af3f026e016394bb0887e01b1606deb3a47b8b53349c10ecd41e432805"
 		},
 		{
 			"path": "reference/extensions/mermaid.md",
@@ -345,10 +348,10 @@
 				"workflow/setup.md"
 			],
 			"excerpt": "Interface and Reading Controls Papyrus uses a three-part reading shell: a primary menu for browsing the vault, a central reading workspace, and a secondary menu for the active note's context. Both side menus are optional, so the article can use the entire window when they are cl…",
-			"wordCount": 1483,
-			"characterCount": 9657,
-			"size": 9950,
-			"hash": "8254354fa9eea01b4f0eb879c5ce11fb9ba2e149b87865bbf495d040d920f15a"
+			"wordCount": 1632,
+			"characterCount": 10727,
+			"size": 11038,
+			"hash": "12a4cb05de2a1d67df4c191719a9f7d6d73a8bdbc1732201b21090646079110b"
 		},
 		{
 			"path": "reference/linktree.md",
@@ -387,7 +390,9 @@
 				"title": "Markdown Basics",
 				"status": "reference",
 				"featured": true,
-				"tags": "markdown, syntax"
+				"tags": "markdown, syntax",
+				"published": "2026-08-18",
+				"updated": "2026-08-20T16:45:00+03:00"
 			},
 			"outgoingLinks": [
 				{
@@ -414,8 +419,8 @@
 			"excerpt": "Markdown Basics Markdown is a plain-text format for structured writing. Papyrus uses Marked to render Markdown in the browser. Core syntax Tables Papyrus places standard Markdown tables in a responsive scroll container. Each table receives a generated header with its body-row an…",
 			"wordCount": 394,
 			"characterCount": 2490,
-			"size": 3452,
-			"hash": "4a821ae0ac62fa60eaf5ca2fce4924f805e9c035ca8e81d4c637d6c404030032"
+			"size": 3509,
+			"hash": "7188714fa43dfbaa930160fcc84eae7c922764cb792f32bf87d7da96f964747d"
 		},
 		{
 			"path": "start/concepts/github-pages.md",
@@ -467,7 +472,10 @@
 				"title": "What Papyrus Does",
 				"status": "draft",
 				"featured": true,
-				"tags": "papyrus, github-pages, obsidian"
+				"tags": "papyrus, github-pages, obsidian",
+				"edition": 2,
+				"published": "2026-08-21",
+				"updated": "2026-08-21T12:00:00+03:00"
 			},
 			"outgoingLinks": [
 				{
@@ -488,8 +496,8 @@
 			"excerpt": "What Papyrus Does Papyrus is a static frontend for Markdown knowledge bases. It is designed for people who like writing in Obsidian but want a lightweight public website that can run on GitHub Pages without a backend. The app provides: A file tree for large folders Manifest-back…",
 			"wordCount": 176,
 			"characterCount": 1032,
-			"size": 1251,
-			"hash": "f37bddd8b1312611cfd5aeedb2c24b21755eb75d28402ab9dd1837d27ca16337"
+			"size": 1319,
+			"hash": "b35a6abaf39709f0680e5cf369ba9302769a0ada49943734580c7b7b8419fcb4"
 		},
 		{
 			"path": "workflow/content-repository.md",

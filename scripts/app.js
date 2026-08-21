@@ -30,6 +30,7 @@ const state = {
 	activePath: "",
 	activePanel: "files",
 	activeView: "home",
+	calendarDateIndex: new Map(),
 	calendarDate: new Date(),
 	contentWidth: 820,
 	fontFamily: "modern",
@@ -46,6 +47,7 @@ const state = {
 	maps: [],
 	secondaryMenuCollapsed: true,
 	settingsOpen: false,
+	searchMetadataKeys: new Set(),
 	soundEnabled: true,
 	qrCodeTimer: 0,
 	searchResultIndex: -1,
@@ -276,6 +278,8 @@ async function loadVault() {
 		noteLoadPromises.clear();
 		state.manifest = await loadManifest({ config: state.config });
 		state.notes = indexManifestNotes({ manifest: state.manifest });
+		state.calendarDateIndex = createCalendarDateIndex({ notes: state.notes });
+		state.searchMetadataKeys = createSearchMetadataKeyIndex({ notes: state.notes });
 		const vaultSource = select(selectors.vaultSource);
 		const vaultSourceLabel = getVaultSourceLabel({ config: state.config });
 		vaultSource.textContent = vaultSourceLabel;
@@ -478,6 +482,7 @@ function indexManifestNotes({ manifest }) {
 		const name = getFileName(path);
 		const metadata = file.metadata || {};
 		const title = String(file.title || metadata.title || removeExtension(name));
+		const calendarDates = getNoteCalendarDates({ metadata });
 
 		notes.push({
 			...file,
@@ -485,6 +490,7 @@ function indexManifestNotes({ manifest }) {
 			name,
 			title,
 			metadata,
+			calendarDates,
 			body: "",
 			visibleBody: "",
 			loaded: false,
@@ -494,6 +500,101 @@ function indexManifestNotes({ manifest }) {
 	}
 
 	return notes;
+}
+
+/**
+ * Gets normalized published and updated dates from note metadata.
+ * @param {object} params
+ * @param {object} params.metadata
+ * @returns {{published: string, updated: string}}
+ */
+function getNoteCalendarDates({ metadata }) {
+	return {
+		published: normalizeCalendarDateValue({ value: getMetadataValue({ metadata, key: "published" }) }),
+		updated: normalizeCalendarDateValue({ value: getMetadataValue({ metadata, key: "updated" }) })
+	};
+}
+
+/**
+ * Extracts a valid authored ISO date without applying timezone conversion.
+ * @param {object} params
+ * @param {unknown} params.value
+ * @returns {string}
+ */
+function normalizeCalendarDateValue({ value }) {
+	const match = String(value || "").trim().match(/^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/);
+	const dateKey = match ? match[1] : "";
+
+	return isValidCalendarDateKey({ dateKey }) ? dateKey : "";
+}
+
+/**
+ * Checks whether a calendar date key represents a real date.
+ * @param {object} params
+ * @param {string} params.dateKey
+ * @returns {boolean}
+ */
+function isValidCalendarDateKey({ dateKey }) {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+		return false;
+	}
+
+	const [year, month, day] = dateKey.split("-").map(Number);
+	const date = new Date(Date.UTC(year, month - 1, day));
+
+	return date.getUTCFullYear() === year
+		&& date.getUTCMonth() === month - 1
+		&& date.getUTCDate() === day;
+}
+
+/**
+ * Creates a lookup of published and updated counts by calendar date.
+ * @param {object} params
+ * @param {Array<object>} params.notes
+ * @returns {Map<string, {published: number, updated: number}>}
+ */
+function createCalendarDateIndex({ notes }) {
+	const dateIndex = new Map();
+	const dateTypes = ["published", "updated"];
+
+	for (let noteIndex = 0; noteIndex < notes.length; noteIndex += 1) {
+		const note = notes[noteIndex];
+
+		for (let typeIndex = 0; typeIndex < dateTypes.length; typeIndex += 1) {
+			const type = dateTypes[typeIndex];
+			const dateKey = note.calendarDates[type];
+
+			if (!dateKey) {
+				continue;
+			}
+
+			const entry = dateIndex.get(dateKey) || { published: 0, updated: 0 };
+			entry[type] += 1;
+			dateIndex.set(dateKey, entry);
+		}
+	}
+
+	return dateIndex;
+}
+
+/**
+ * Creates a case-insensitive index of searchable frontmatter property names.
+ * @param {object} params
+ * @param {Array<object>} params.notes
+ * @returns {Set<string>}
+ */
+function createSearchMetadataKeyIndex({ notes }) {
+	const metadataKeys = new Set();
+
+	for (let noteIndex = 0; noteIndex < notes.length; noteIndex += 1) {
+		const keys = Object.keys(notes[noteIndex].metadata);
+
+		for (let keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
+			metadataKeys.add(keys[keyIndex].toLowerCase());
+		}
+	}
+
+	return metadataKeys;
 }
 
 /**
@@ -745,22 +846,131 @@ function renderFileTree() {
 }
 
 /**
- * Filters notes using indexed text.
+ * Filters notes using indexed text and structured frontmatter filters.
  * @param {object} params
  * @param {Array<object>} params.notes
- * @param {string} params.query
+ * @param {{frontmatterFilters: Array<object>, textQuery: string}} params.searchQuery
  * @returns {Array<object>}
  */
-function filterNotesByText({ notes, query }) {
+function filterNotesBySearchQuery({ notes, searchQuery }) {
 	const filtered = [];
 
 	for (let index = 0; index < notes.length; index += 1) {
-		if (notes[index].searchText.includes(query)) {
-			filtered.push(notes[index]);
+		const note = notes[index];
+
+		if (searchQuery.textQuery && !note.searchText.includes(searchQuery.textQuery)) {
+			continue;
 		}
+
+		if (!matchesFrontmatterFilters({ note, frontmatterFilters: searchQuery.frontmatterFilters })) {
+			continue;
+		}
+
+		filtered.push(note);
 	}
 
 	return filtered;
+}
+
+/**
+ * Parses recognized frontmatter property filters from a search query.
+ * @param {object} params
+ * @param {string} params.query
+ * @param {Set<string>} params.metadataKeys
+ * @returns {{frontmatterFilters: Array<{field: string, value: string}>, textQuery: string}}
+ */
+function parseSearchQuery({ query, metadataKeys }) {
+	const frontmatterFilters = [];
+	const textQuery = query.replace(
+		/(^|\s)([a-z0-9_-]+):(?:"([^"]+)"|'([^']+)'|([^\s]+))(?=\s|$)/g,
+		function extractFrontmatterFilter(match, prefix, field, doubleQuotedValue, singleQuotedValue, bareValue) {
+			if (!metadataKeys.has(field)) {
+				return match;
+			}
+
+			const value = doubleQuotedValue || singleQuotedValue || bareValue;
+			frontmatterFilters.push({ field, value });
+			return prefix;
+		}
+	).replace(/\s+/g, " ").trim();
+
+	return { frontmatterFilters, textQuery };
+}
+
+/**
+ * Checks whether a note satisfies every structured frontmatter filter.
+ * @param {object} params
+ * @param {object} params.note
+ * @param {Array<{field: string, value: string}>} params.frontmatterFilters
+ * @returns {boolean}
+ */
+function matchesFrontmatterFilters({ note, frontmatterFilters }) {
+	for (let index = 0; index < frontmatterFilters.length; index += 1) {
+		const filter = frontmatterFilters[index];
+		const entry = getMetadataEntry({ metadata: note.metadata, key: filter.field });
+
+		if (!entry.found || !matchesFrontmatterValue({ value: entry.value, query: filter.value })) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Gets a raw metadata entry case-insensitively without flattening its value.
+ * @param {object} params
+ * @param {object} params.metadata
+ * @param {string} params.key
+ * @returns {{found: boolean, value: *}}
+ */
+function getMetadataEntry({ metadata, key }) {
+	const keys = Object.keys(metadata);
+
+	for (let index = 0; index < keys.length; index += 1) {
+		if (keys[index].toLowerCase() === key.toLowerCase()) {
+			return { found: true, value: metadata[keys[index]] };
+		}
+	}
+
+	return { found: false, value: undefined };
+}
+
+/**
+ * Matches a filter using the frontmatter value's original shape.
+ * @param {object} params
+ * @param {*} params.value
+ * @param {string} params.query
+ * @returns {boolean}
+ */
+function matchesFrontmatterValue({ value, query }) {
+	if (Array.isArray(value)) {
+		for (let index = 0; index < value.length; index += 1) {
+			if (matchesFrontmatterValue({ value: value[index], query })) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	if (typeof value === "string") {
+		return value.toLowerCase().includes(query);
+	}
+
+	if (typeof value === "boolean") {
+		return query === String(value);
+	}
+
+	if (typeof value === "number") {
+		return /^-?\d+(?:\.\d+)?$/.test(query) && Number(query) === value;
+	}
+
+	if (value === null) {
+		return query === "null";
+	}
+
+	return false;
 }
 
 /**
@@ -1254,8 +1464,9 @@ function createTree({ notes }) {
 function renderSearch() {
 	const input = select(selectors.searchInput);
 	const query = input.value.trim().toLowerCase();
+	const searchQuery = parseSearchQuery({ query, metadataKeys: state.searchMetadataKeys });
 	const container = select(selectors.searchResults);
-	const results = query ? filterNotesByText({ notes: state.notes, query }).slice(0, 40) : [];
+	const results = query ? filterNotesBySearchQuery({ notes: state.notes, searchQuery }).slice(0, 40) : [];
 	const hasResults = results.length > 0;
 
 	input.setAttribute("aria-expanded", String(hasResults));
@@ -1263,7 +1474,7 @@ function renderSearch() {
 	if (!query) {
 		state.searchResultIndex = -1;
 		input.removeAttribute("aria-activedescendant");
-		container.innerHTML = `<p class="search-message">Search titles, paths, excerpts, and frontmatter.</p>`;
+		container.innerHTML = `<p class="search-message">Search all note data, or scope frontmatter with <code>tags:value</code>.</p>`;
 		return;
 	}
 
@@ -1278,10 +1489,37 @@ function renderSearch() {
 	container.replaceChildren();
 
 	for (let index = 0; index < results.length; index += 1) {
-		container.append(createResultButton({ note: results[index], query, index }));
+		container.append(createResultButton({
+			note: results[index],
+			query: searchQuery.textQuery,
+			index,
+			showCalendarDates: shouldShowCalendarDates({ searchQuery })
+		}));
 	}
 
 	renderSearchResultSelection();
+}
+
+/**
+ * Checks whether search results should expose their calendar metadata.
+ * @param {object} params
+ * @param {{frontmatterFilters: Array<object>, textQuery: string}} params.searchQuery
+ * @returns {boolean}
+ */
+function shouldShowCalendarDates({ searchQuery }) {
+	if (isValidCalendarDateKey({ dateKey: searchQuery.textQuery })) {
+		return true;
+	}
+
+	for (let index = 0; index < searchQuery.frontmatterFilters.length; index += 1) {
+		const field = searchQuery.frontmatterFilters[index].field;
+
+		if (field === "published" || field === "updated") {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /**
@@ -1352,6 +1590,7 @@ function renderCalendar() {
 	const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
 	const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
 	const leadingDays = getLeadingCalendarDays({ day: monthStart.getDay(), firstDayOfWeek });
+	const calendarWeekCount = Math.ceil((leadingDays + daysInMonth) / 7);
 	const weekdays = getWeekdayLabels({ firstDayOfWeek });
 	const titleFormatter = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 	const title = select(selectors.calendarTitle);
@@ -1362,19 +1601,74 @@ function renderCalendar() {
 	weekdayContainer.replaceChildren();
 	dayContainer.replaceChildren();
 
+	const weekHeading = document.createElement("span");
+	weekHeading.className = "calendar-week-heading";
+	weekHeading.textContent = "Wk";
+	weekdayContainer.append(weekHeading);
+
 	for (let index = 0; index < weekdays.length; index += 1) {
 		const weekday = document.createElement("span");
 		weekday.textContent = weekdays[index];
 		weekdayContainer.append(weekday);
 	}
 
-	for (let index = 0; index < leadingDays; index += 1) {
-		dayContainer.append(createCalendarSpacer());
-	}
+	for (let weekIndex = 0; weekIndex < calendarWeekCount; weekIndex += 1) {
+		const firstDayInRow = 1 - leadingDays + (weekIndex * 7);
+		const weekStartDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), firstDayInRow);
 
-	for (let day = 1; day <= daysInMonth; day += 1) {
-		dayContainer.append(createCalendarDay({ day, monthDate, today }));
+		dayContainer.append(createCalendarWeekNumber({ weekStartDate, firstDayOfWeek }));
+
+		for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+			const day = firstDayInRow + dayIndex;
+
+			if (day < 1 || day > daysInMonth) {
+				dayContainer.append(createCalendarSpacer());
+				continue;
+			}
+
+			dayContainer.append(createCalendarDay({ day, monthDate, today }));
+		}
 	}
+}
+
+/**
+ * Creates an ISO week-number label for a displayed calendar row.
+ * @param {object} params
+ * @param {Date} params.weekStartDate
+ * @param {number} params.firstDayOfWeek
+ * @returns {HTMLSpanElement}
+ */
+function createCalendarWeekNumber({ weekStartDate, firstDayOfWeek }) {
+	const mondayOffset = (1 - firstDayOfWeek + 7) % 7;
+	const monday = new Date(
+		weekStartDate.getFullYear(),
+		weekStartDate.getMonth(),
+		weekStartDate.getDate() + mondayOffset
+	);
+	const weekNumber = getIsoWeekNumber({ date: monday });
+	const label = document.createElement("span");
+
+	label.className = "calendar-week-number";
+	label.textContent = String(weekNumber);
+	label.setAttribute("aria-label", `Week ${weekNumber}`);
+	label.title = `Week ${weekNumber}`;
+	return label;
+}
+
+/**
+ * Gets the ISO 8601 week number for a date.
+ * @param {object} params
+ * @param {Date} params.date
+ * @returns {number}
+ */
+function getIsoWeekNumber({ date }) {
+	const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+	const isoWeekday = utcDate.getUTCDay() || 7;
+
+	utcDate.setUTCDate(utcDate.getUTCDate() + 4 - isoWeekday);
+
+	const isoYearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+	return Math.ceil((((utcDate.getTime() - isoYearStart.getTime()) / 86400000) + 1) / 7);
 }
 
 /**
@@ -1402,6 +1696,8 @@ function createCalendarDay({ day, monthDate, today }) {
 		&& today.getMonth() === monthDate.getMonth()
 		&& today.getDate() === day;
 	const date = new Date(monthDate.getFullYear(), monthDate.getMonth(), day);
+	const dateKey = formatCalendarDateKey({ date });
+	const dateEntry = state.calendarDateIndex.get(dateKey);
 	const labelFormatter = new Intl.DateTimeFormat(undefined, {
 		day: "numeric",
 		month: "long",
@@ -1411,14 +1707,133 @@ function createCalendarDay({ day, monthDate, today }) {
 	button.className = "calendar-day";
 	button.classList.toggle("is-today", isToday);
 	button.type = "button";
-	button.textContent = String(day);
-	button.setAttribute("aria-label", labelFormatter.format(date));
+	button.disabled = !dateEntry;
+	button.dataset.date = dateKey;
+	button.append(createCalendarDayNumber({ day }));
+	button.setAttribute("aria-label", getCalendarDayLabel({
+		dateLabel: labelFormatter.format(date),
+		dateEntry
+	}));
 
 	if (isToday) {
 		button.setAttribute("aria-current", "date");
 	}
 
+	if (dateEntry) {
+		button.classList.add("has-calendar-notes");
+		button.classList.toggle("has-published", dateEntry.published > 0);
+		button.classList.toggle("has-updated", dateEntry.updated > 0);
+		button.title = getCalendarDateActivityLabel({ dateEntry });
+		button.append(createCalendarDateMarkers({ dateEntry }));
+		addNavigationSound({ element: button, cue: "toggle" });
+		button.addEventListener("click", handleCalendarDayClick);
+	}
+
 	return button;
+}
+
+/**
+ * Creates the visible day number inside a calendar button.
+ * @param {object} params
+ * @param {number} params.day
+ * @returns {HTMLSpanElement}
+ */
+function createCalendarDayNumber({ day }) {
+	const dayNumber = document.createElement("span");
+
+	dayNumber.className = "calendar-day-number";
+	dayNumber.textContent = String(day);
+	return dayNumber;
+}
+
+/**
+ * Creates published and updated marker dots for a calendar date.
+ * @param {object} params
+ * @param {{published: number, updated: number}} params.dateEntry
+ * @returns {HTMLSpanElement}
+ */
+function createCalendarDateMarkers({ dateEntry }) {
+	const markers = document.createElement("span");
+	const markerTypes = ["published", "updated"];
+
+	markers.className = "calendar-date-markers";
+	markers.setAttribute("aria-hidden", "true");
+
+	for (let index = 0; index < markerTypes.length; index += 1) {
+		const type = markerTypes[index];
+
+		if (!dateEntry[type]) {
+			continue;
+		}
+
+		const marker = document.createElement("span");
+		marker.className = `calendar-date-marker is-${type}`;
+		markers.append(marker);
+	}
+
+	return markers;
+}
+
+/**
+ * Formats a local calendar date as YYYY-MM-DD.
+ * @param {object} params
+ * @param {Date} params.date
+ * @returns {string}
+ */
+function formatCalendarDateKey({ date }) {
+	const year = String(date.getFullYear()).padStart(4, "0");
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+
+	return `${year}-${month}-${day}`;
+}
+
+/**
+ * Gets an accessible label for a calendar date.
+ * @param {object} params
+ * @param {string} params.dateLabel
+ * @param {{published: number, updated: number}|undefined} params.dateEntry
+ * @returns {string}
+ */
+function getCalendarDayLabel({ dateLabel, dateEntry }) {
+	return dateEntry ? `${dateLabel}; ${getCalendarDateActivityLabel({ dateEntry })}` : dateLabel;
+}
+
+/**
+ * Describes the published and updated activity on a date.
+ * @param {object} params
+ * @param {{published: number, updated: number}} params.dateEntry
+ * @returns {string}
+ */
+function getCalendarDateActivityLabel({ dateEntry }) {
+	const labels = [];
+
+	if (dateEntry.published) {
+		labels.push(`${dateEntry.published} published`);
+	}
+
+	if (dateEntry.updated) {
+		labels.push(`${dateEntry.updated} updated`);
+	}
+
+	return labels.join(", ");
+}
+
+/**
+ * Searches for every article published or updated on a calendar date.
+ * @param {MouseEvent} event
+ * @returns {void}
+ */
+function handleCalendarDayClick(event) {
+	const dateKey = event.currentTarget.dataset.date;
+	const input = select(selectors.searchInput);
+	const results = select(selectors.searchResults);
+
+	input.value = dateKey;
+	state.searchResultIndex = 0;
+	renderSearch();
+	results.scrollTop = 0;
+	input.focus();
 }
 
 /**
@@ -1499,10 +1914,12 @@ function showCurrentMonth() {
  * @param {object} params.note
  * @param {string} params.query
  * @param {number} params.index
+ * @param {boolean} params.showCalendarDates
  * @returns {HTMLButtonElement}
  */
-function createResultButton({ note, query, index }) {
+function createResultButton({ note, query, index, showCalendarDates }) {
 	const button = document.createElement("button");
+	const calendarMetadata = showCalendarDates ? createResultCalendarMetadata({ note }) : "";
 	button.className = "result-button";
 	button.type = "button";
 	button.id = `vault-search-result-${index}`;
@@ -1510,12 +1927,35 @@ function createResultButton({ note, query, index }) {
 	button.innerHTML = `
 		<span class="result-title">${escapeHtml(note.title)}</span>
 		<span class="result-path">${escapeHtml(note.path)}</span>
+		${calendarMetadata}
 		<span class="result-excerpt">${escapeHtml(getExcerpt({ text: note.excerpt || "", query }))}</span>
 	`;
 	button.dataset.path = note.path;
 	addNavigationSound({ element: button, cue: "page" });
 	button.addEventListener("click", handleSearchResultButtonClick);
 	return button;
+}
+
+/**
+ * Creates normalized calendar metadata for a date-search result.
+ * @param {object} params
+ * @param {object} params.note
+ * @returns {string}
+ */
+function createResultCalendarMetadata({ note }) {
+	const labels = [];
+
+	if (note.calendarDates.published) {
+		labels.push(`Published ${note.calendarDates.published}`);
+	}
+
+	if (note.calendarDates.updated) {
+		labels.push(`Updated ${note.calendarDates.updated}`);
+	}
+
+	return labels.length
+		? `<span class="result-calendar-metadata">${escapeHtml(labels.join(" · "))}</span>`
+		: "";
 }
 
 /**

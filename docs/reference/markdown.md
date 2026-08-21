@@ -3,6 +3,8 @@ title: Markdown Basics
 status: reference
 featured: true
 tags: markdown, syntax
+published: 2026-08-18
+updated: 2026-08-20T16:45:00+03:00
 ---
 
 # Markdown Basics
