@@ -8,7 +8,7 @@ See an example deployment at [pmk.dev](https://pmk.dev).
 
 - Local vaults and content hosted in public GitHub repositories
 - Manifest-backed file browsing and full-metadata search
-- Wiki links, backlinks, bookmarks, a calendar, and a knowledge graph
+- Wiki links, backlinks, bookmarks, a calendar, and vault insights
 - Obsidian-compatible callouts, comments, footnotes, and Mermaid diagrams
 - Syntax highlighting, maps, market tickers, periodic tables, and SWOT cards
 - Configurable light and dark themes, home screen, metadata, navigation, and interaction sounds

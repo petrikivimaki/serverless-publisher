@@ -160,6 +160,6 @@
 	"features": {
 		"showFrontmatter": true,
 		"showBacklinks": true,
-		"showGraph": true
+		"showInsights": true
 	}
 }

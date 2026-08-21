@@ -179,7 +179,7 @@ const selectors = {
 	fontFamily: "[data-font-family]",
 	fontSizeInput: "[data-font-size]",
 	fontSizeValue: "[data-font-size-value]",
-	graphList: "[data-graph-list]",
+	insights: "[data-insights]",
 	lineHeightInput: "[data-line-height]",
 	lineHeightValue: "[data-line-height-value]",
 	focusTimerDuration: "[data-timer-duration]",
@@ -769,7 +769,7 @@ function renderAll() {
 	renderSearch();
 	renderCalendar();
 	renderBookmarks();
-	renderGraph();
+	renderInsights();
 	renderLinktree();
 	renderPanels();
 	renderShell();
@@ -1969,11 +1969,11 @@ function handleSearchResultButtonClick(event) {
 }
 
 /**
- * Renders a simple linked-note graph list.
+ * Renders a compact vault overview from manifest metadata.
  * @returns {void}
  */
-function renderGraph() {
-	const container = select(selectors.graphList);
+function renderInsights() {
+	const container = select(selectors.insights);
 	container.replaceChildren();
 
 	if (!state.notes.length) {
@@ -1981,20 +1981,368 @@ function renderGraph() {
 		return;
 	}
 
-	for (let index = 0; index < state.notes.length; index += 1) {
-		const note = state.notes[index];
-		const button = document.createElement("button");
-		button.className = "graph-button";
-		button.type = "button";
-		button.dataset.path = note.path;
-		addNavigationSound({ element: button, cue: "page" });
-		button.innerHTML = `
-			<span class="graph-title">${escapeHtml(note.title)}</span>
-			<span class="graph-path">${note.outgoingLinks.length} outgoing links</span>
-		`;
-		button.addEventListener("click", handleNoteButtonClick);
-		container.append(button);
+	const insights = createVaultInsights({ notes: state.notes });
+	const header = document.createElement("header");
+	header.className = "insights-header";
+	header.innerHTML = `
+		<h2>Insights</h2>
+		<p>A quick look at this vault.</p>
+	`;
+
+	const metrics = createInsightMetrics({ metrics: insights.metrics });
+	const standouts = createInsightStandouts({ standouts: insights.standouts });
+	container.append(header, metrics, standouts);
+}
+
+/**
+ * Creates aggregate vault metrics and ranked note highlights.
+ * @param {object} params
+ * @param {Array<object>} params.notes
+ * @returns {{metrics: Array<object>, standouts: Array<object>}}
+ */
+function createVaultInsights({ notes }) {
+	const notePaths = new Set();
+	let totalWords = 0;
+
+	for (let index = 0; index < notes.length; index += 1) {
+		notePaths.add(normalizePath(notes[index].path));
+		totalWords += Number(notes[index].wordCount || 0);
 	}
+
+	const readingMinutes = estimateReadingMinutes({ wordCount: totalWords });
+	const metrics = [
+		{ label: "Notes", value: formatNumber(notes.length) },
+		{ label: "Folders", value: formatNumber(countVaultFolders({ notes })) },
+		{ label: "Words", value: formatNumber(totalWords) },
+		{ label: "Read time", value: formatVaultReadingTime({ minutes: readingMinutes }) },
+		{ label: "Links", value: formatNumber(countResolvedVaultLinks({ notes, notePaths })) },
+		{ label: "Tags", value: formatNumber(countVaultTags({ notes })) }
+	];
+
+	return {
+		metrics,
+		standouts: rankVaultStandouts({ notes, notePaths })
+	};
+}
+
+/**
+ * Creates the insight metric grid.
+ * @param {object} params
+ * @param {Array<object>} params.metrics
+ * @returns {HTMLDListElement}
+ */
+function createInsightMetrics({ metrics }) {
+	const list = document.createElement("dl");
+	list.className = "insights-metrics";
+
+	for (let index = 0; index < metrics.length; index += 1) {
+		const item = document.createElement("div");
+		item.className = "insights-metric";
+		item.innerHTML = `
+			<dt>${escapeHtml(metrics[index].label)}</dt>
+			<dd>${escapeHtml(metrics[index].value)}</dd>
+		`;
+		list.append(item);
+	}
+
+	return list;
+}
+
+/**
+ * Creates the clickable standout-note section.
+ * @param {object} params
+ * @param {Array<object>} params.standouts
+ * @returns {HTMLElement}
+ */
+function createInsightStandouts({ standouts }) {
+	const section = document.createElement("section");
+	section.className = "insights-standouts";
+	section.innerHTML = `<h3>Standout notes</h3>`;
+
+	for (let index = 0; index < standouts.length; index += 1) {
+		section.append(createInsightNoteButton({ standout: standouts[index] }));
+	}
+
+	return section;
+}
+
+/**
+ * Creates a note button for one ranked insight.
+ * @param {object} params
+ * @param {object} params.standout
+ * @returns {HTMLButtonElement}
+ */
+function createInsightNoteButton({ standout }) {
+	const button = document.createElement("button");
+	button.className = "insights-note";
+	button.type = "button";
+	button.dataset.path = standout.note.path;
+	button.setAttribute("aria-label", `${standout.label}: ${standout.note.title}, ${standout.value}`);
+	button.innerHTML = `
+		<span class="insights-note-icon"><i class="${escapeHtml(standout.icon)}" aria-hidden="true"></i></span>
+		<span class="insights-note-copy">
+			<span class="insights-note-label">${escapeHtml(standout.label)}</span>
+			<span class="insights-note-title">${escapeHtml(standout.note.title)}</span>
+		</span>
+		<span class="insights-note-value">${escapeHtml(standout.value)}</span>
+	`;
+	addNavigationSound({ element: button, cue: "page" });
+	button.addEventListener("click", handleNoteButtonClick);
+	return button;
+}
+
+/**
+ * Counts every unique folder path represented by the vault.
+ * @param {object} params
+ * @param {Array<object>} params.notes
+ * @returns {number}
+ */
+function countVaultFolders({ notes }) {
+	const folders = new Set();
+
+	for (let noteIndex = 0; noteIndex < notes.length; noteIndex += 1) {
+		const parts = normalizePath(notes[noteIndex].path).split("/").slice(0, -1);
+		let folderPath = "";
+
+		for (let partIndex = 0; partIndex < parts.length; partIndex += 1) {
+			folderPath = folderPath ? `${folderPath}/${parts[partIndex]}` : parts[partIndex];
+
+			if (folderPath) {
+				folders.add(folderPath);
+			}
+		}
+	}
+
+	return folders.size;
+}
+
+/**
+ * Counts unique resolved outgoing-note relationships.
+ * @param {object} params
+ * @param {Array<object>} params.notes
+ * @param {Set<string>} params.notePaths
+ * @returns {number}
+ */
+function countResolvedVaultLinks({ notes, notePaths }) {
+	let count = 0;
+
+	for (let noteIndex = 0; noteIndex < notes.length; noteIndex += 1) {
+		const targets = getResolvedOutgoingPaths({ note: notes[noteIndex], notePaths });
+		count += targets.size;
+	}
+
+	return count;
+}
+
+/**
+ * Counts unique tags across supported string and array metadata values.
+ * @param {object} params
+ * @param {Array<object>} params.notes
+ * @returns {number}
+ */
+function countVaultTags({ notes }) {
+	const tags = new Set();
+
+	for (let noteIndex = 0; noteIndex < notes.length; noteIndex += 1) {
+		const value = getMetadataValue({ metadata: notes[noteIndex].metadata, key: "tags" });
+		const noteTags = value.split(",");
+
+		for (let tagIndex = 0; tagIndex < noteTags.length; tagIndex += 1) {
+			const tag = noteTags[tagIndex].trim().replace(/^#/, "").toLowerCase();
+
+			if (tag) {
+				tags.add(tag);
+			}
+		}
+	}
+
+	return tags.size;
+}
+
+/**
+ * Creates a normalized set of resolved outgoing note paths.
+ * @param {object} params
+ * @param {object} params.note
+ * @param {Set<string>} params.notePaths
+ * @returns {Set<string>}
+ */
+function getResolvedOutgoingPaths({ note, notePaths }) {
+	const paths = new Set();
+	const sourcePath = normalizePath(note.path);
+
+	for (let index = 0; index < note.outgoingLinks.length; index += 1) {
+		const path = normalizePath(note.outgoingLinks[index].path || "");
+
+		if (path && path !== sourcePath && notePaths.has(path)) {
+			paths.add(path);
+		}
+	}
+
+	return paths;
+}
+
+/**
+ * Counts unique neighboring notes across incoming and outgoing links.
+ * @param {object} params
+ * @param {object} params.note
+ * @param {Set<string>} params.notePaths
+ * @returns {number}
+ */
+function countNoteNeighbors({ note, notePaths }) {
+	const neighbors = getResolvedOutgoingPaths({ note, notePaths });
+	const sourcePath = normalizePath(note.path);
+
+	for (let index = 0; index < note.backlinks.length; index += 1) {
+		const path = normalizePath(note.backlinks[index]);
+
+		if (path && path !== sourcePath && notePaths.has(path)) {
+			neighbors.add(path);
+		}
+	}
+
+	return neighbors.size;
+}
+
+/**
+ * Counts unique resolved backlinks for a note.
+ * @param {object} params
+ * @param {object} params.note
+ * @param {Set<string>} params.notePaths
+ * @returns {number}
+ */
+function countNoteBacklinks({ note, notePaths }) {
+	const backlinks = new Set();
+	const sourcePath = normalizePath(note.path);
+
+	for (let index = 0; index < note.backlinks.length; index += 1) {
+		const path = normalizePath(note.backlinks[index]);
+
+		if (path && path !== sourcePath && notePaths.has(path)) {
+			backlinks.add(path);
+		}
+	}
+
+	return backlinks.size;
+}
+
+/**
+ * Ranks the small set of note-level highlights shown in Insights.
+ * @param {object} params
+ * @param {Array<object>} params.notes
+ * @param {Set<string>} params.notePaths
+ * @returns {Array<object>}
+ */
+function rankVaultStandouts({ notes, notePaths }) {
+	let longest = { note: null, score: -1 };
+	let referenced = { note: null, score: -1 };
+	let connected = { note: null, score: -1 };
+	let recent = { note: null, score: -1, date: "" };
+
+	for (let index = 0; index < notes.length; index += 1) {
+		const note = notes[index];
+		const wordCount = Number(note.wordCount || 0);
+		const backlinkCount = countNoteBacklinks({ note, notePaths });
+		const neighborCount = countNoteNeighbors({ note, notePaths });
+		const activityDate = note.calendarDates.updated || note.calendarDates.published;
+		const activityTimestamp = activityDate ? Date.parse(`${activityDate}T00:00:00Z`) : -1;
+
+		longest = selectHigherInsightScore({ candidate: longest, note, score: wordCount });
+		referenced = selectHigherInsightScore({ candidate: referenced, note, score: backlinkCount });
+		connected = selectHigherInsightScore({ candidate: connected, note, score: neighborCount });
+
+		if (activityTimestamp > recent.score) {
+			recent = { note, score: activityTimestamp, date: activityDate };
+		}
+	}
+
+	const standouts = [];
+
+	if (longest.note && longest.score > 0) {
+		standouts.push({
+			label: "Longest read",
+			note: longest.note,
+			value: `${formatNumber(longest.score)} words`,
+			icon: "fa-regular fa-file-lines"
+		});
+	}
+
+	if (referenced.note && referenced.score > 0) {
+		standouts.push({
+			label: "Most referenced",
+			note: referenced.note,
+			value: `${formatNumber(referenced.score)} backlinks`,
+			icon: "fa-solid fa-arrow-turn-down"
+		});
+	}
+
+	if (connected.note && connected.score > 0) {
+		standouts.push({
+			label: "Most connected",
+			note: connected.note,
+			value: `${formatNumber(connected.score)} neighbors`,
+			icon: "fa-solid fa-share-nodes"
+		});
+	}
+
+	if (recent.note) {
+		standouts.push({
+			label: "Latest activity",
+			note: recent.note,
+			value: formatInsightDate({ date: recent.date }),
+			icon: "fa-regular fa-clock"
+		});
+	}
+
+	return standouts;
+}
+
+/**
+ * Keeps the first note with the highest score, preserving manifest order for ties.
+ * @param {object} params
+ * @param {object} params.candidate
+ * @param {object} params.note
+ * @param {number} params.score
+ * @returns {object}
+ */
+function selectHigherInsightScore({ candidate, note, score }) {
+	return score > candidate.score ? { note, score } : candidate;
+}
+
+/**
+ * Formats an aggregate vault reading duration compactly.
+ * @param {object} params
+ * @param {number} params.minutes
+ * @returns {string}
+ */
+function formatVaultReadingTime({ minutes }) {
+	if (minutes < 60) {
+		return `${minutes} min`;
+	}
+
+	const hours = Math.floor(minutes / 60);
+	const remainingMinutes = minutes % 60;
+	return remainingMinutes ? `${formatNumber(hours)}h ${remainingMinutes}m` : `${formatNumber(hours)}h`;
+}
+
+/**
+ * Formats an authored ISO date without shifting it across timezones.
+ * @param {object} params
+ * @param {string} params.date
+ * @returns {string}
+ */
+function formatInsightDate({ date }) {
+	const timestamp = Date.parse(`${date}T00:00:00Z`);
+
+	if (!Number.isFinite(timestamp)) {
+		return date;
+	}
+
+	return new Intl.DateTimeFormat(undefined, {
+		day: "numeric",
+		month: "short",
+		timeZone: "UTC",
+		year: "numeric"
+	}).format(timestamp);
 }
 
 /**

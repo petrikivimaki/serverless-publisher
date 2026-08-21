@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"generatedAt": "2026-08-21T14:19:53.185Z",
+	"generatedAt": "2026-08-21T17:36:13.805Z",
 	"revision": "local",
 	"contentRoot": "",
 	"files": [
@@ -348,10 +348,10 @@
 				"workflow/setup.md"
 			],
 			"excerpt": "Interface and Reading Controls Papyrus uses a three-part reading shell: a primary menu for browsing the vault, a central reading workspace, and a secondary menu for the active note's context. Both side menus are optional, so the article can use the entire window when they are cl…",
-			"wordCount": 1632,
-			"characterCount": 10727,
-			"size": 11038,
-			"hash": "12a4cb05de2a1d67df4c191719a9f7d6d73a8bdbc1732201b21090646079110b"
+			"wordCount": 1722,
+			"characterCount": 11411,
+			"size": 11738,
+			"hash": "836d73f398396fb0136c09bbefd6659283166042ed38c2047b8700ea1f21c922"
 		},
 		{
 			"path": "reference/linktree.md",

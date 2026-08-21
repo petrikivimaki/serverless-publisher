@@ -538,7 +538,7 @@
 			"required": [
 				"showFrontmatter",
 				"showBacklinks",
-				"showGraph"
+				"showInsights"
 			],
 			"properties": {
 				"showFrontmatter": {
@@ -547,7 +547,7 @@
 				"showBacklinks": {
 					"type": "boolean"
 				},
-				"showGraph": {
+				"showInsights": {
 					"type": "boolean"
 				}
 			}
