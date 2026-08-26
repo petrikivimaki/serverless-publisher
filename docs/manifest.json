@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"generatedAt": "2026-08-21T17:36:13.805Z",
+	"generatedAt": "2026-08-26T16:57:23.848Z",
 	"revision": "local",
 	"contentRoot": "",
 	"files": [
@@ -417,10 +417,10 @@
 				"workflow/publish.md"
 			],
 			"excerpt": "Markdown Basics Markdown is a plain-text format for structured writing. Papyrus uses Marked to render Markdown in the browser. Core syntax Tables Papyrus places standard Markdown tables in a responsive scroll container. Each table receives a generated header with its body-row an…",
-			"wordCount": 394,
-			"characterCount": 2490,
-			"size": 3509,
-			"hash": "7188714fa43dfbaa930160fcc84eae7c922764cb792f32bf87d7da96f964747d"
+			"wordCount": 780,
+			"characterCount": 4650,
+			"size": 5693,
+			"hash": "ec72a6ea0cdb915f10ec6692d2b9a592951aa0e2e26c0a2180c2d87173f69806"
 		},
 		{
 			"path": "start/concepts/github-pages.md",

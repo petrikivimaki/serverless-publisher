@@ -65,12 +65,18 @@ const bookmarkStorageKey = "papyrus.bookmarks";
 const appearanceStorageKey = "papyrus.appearance";
 const codeRunnerChannel = "papyrus-code-runner";
 const codeRunnerSessions = new Map();
+const articleTableStates = new WeakMap();
 const noteContentCache = new Map();
 const noteLoadPromises = new Map();
 const contentManifestSchemaVersion = 1;
 const minimumSelectionCharacters = 5;
 const maximumQrCodeCharacters = 100;
 const minimumScrollTopOffset = 800;
+const maximumUncontrolledTableRows = 6;
+const tableTextCollator = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: "base"
+});
 const qrCodeVisibleMs = 18000;
 const soundEffectsVolume = 0.36;
 const maximumFeaturedNotes = 3;
@@ -669,6 +675,8 @@ function bindEvents() {
 	select(selectors.searchInput).addEventListener("input", handleSearchInput);
 	select(selectors.searchInput).addEventListener("keydown", handleSearchKeyDown);
 	select(selectors.article).addEventListener("click", handleArticleClick);
+	select(selectors.article).addEventListener("input", handleArticleInput);
+	select(selectors.article).addEventListener("change", handleArticleChange);
 	select(selectors.article).addEventListener("scroll", handleArticleScroll, { passive: true });
 	select(selectors.fontSizeInput).addEventListener("input", handleFontSizeInput);
 	select(selectors.lineHeightInput).addEventListener("input", handleLineHeightInput);
@@ -2581,7 +2589,8 @@ async function loadNoteContent({ note }) {
  * @returns {Promise<object>}
  */
 async function fetchNoteContent({ note }) {
-	const response = await fetch(note.sourceUrl);
+	const cache = state.manifest.sourceType === "local" ? "no-cache" : "default";
+	const response = await fetch(note.sourceUrl, { cache });
 
 	if (!response.ok) {
 		throw new Error(`Could not load article: ${note.path}`);
@@ -2875,6 +2884,7 @@ function renderArticle({ note }) {
 	article.innerHTML = `${header}<div class="article-inner">${content}</div>`;
 	initializeArticleMermaidDiagrams();
 	initializeArticleCodeBlocks();
+	initializeArticleTables();
 	highlightArticleCode();
 	initializeArticleMaps();
 	typesetArticleMath({ markdown: note.visibleBody });
@@ -4225,11 +4235,43 @@ function handleArticleClick(event) {
 		return;
 	}
 
+	const tableToolsAction = event.target.closest("[data-action='toggle-table-tools']");
+
+	if (tableToolsAction) {
+		event.preventDefault();
+		toggleArticleTableTools({ button: tableToolsAction });
+		return;
+	}
+
+	const tableSortAction = event.target.closest("[data-action='sort-table-column']");
+
+	if (tableSortAction) {
+		event.preventDefault();
+		sortArticleTableByColumn({ button: tableSortAction });
+		return;
+	}
+
+	const tableClearAction = event.target.closest("[data-action='clear-table-tools']");
+
+	if (tableClearAction) {
+		event.preventDefault();
+		clearArticleTableTools({ button: tableClearAction });
+		return;
+	}
+
 	const tableCopyAction = event.target.closest("[data-action='copy-table']");
 
 	if (tableCopyAction) {
 		event.preventDefault();
 		copyArticleTable({ button: tableCopyAction });
+		return;
+	}
+
+	const tableToggleAction = event.target.closest("[data-action='toggle-table']");
+
+	if (tableToggleAction) {
+		event.preventDefault();
+		toggleArticleTable({ button: tableToggleAction });
 		return;
 	}
 
@@ -4249,6 +4291,67 @@ function handleArticleClick(event) {
 
 	event.preventDefault();
 	openNote({ path: link.dataset.noteTarget });
+}
+
+/**
+ * Handles live table filter input.
+ * @param {InputEvent} event
+ * @returns {void}
+ */
+function handleArticleInput(event) {
+	const input = event.target.closest("[data-action='filter-table']");
+
+	if (!input) {
+		return;
+	}
+
+	const embed = input.closest(".table-embed");
+	const tableState = embed ? articleTableStates.get(embed) : null;
+
+	if (!embed || !tableState) {
+		return;
+	}
+
+	tableState.filterQuery = input.value;
+	applyArticleTableView({ embed, reveal: true });
+}
+
+/**
+ * Handles table tool select changes.
+ * @param {Event} event
+ * @returns {void}
+ */
+function handleArticleChange(event) {
+	const control = event.target.closest("[data-action]");
+
+	if (!control) {
+		return;
+	}
+
+	const embed = control.closest(".table-embed");
+	const tableState = embed ? articleTableStates.get(embed) : null;
+
+	if (!embed || !tableState) {
+		return;
+	}
+
+	if (control.dataset.action === "filter-table-column") {
+		tableState.filterColumn = Number(control.value);
+		applyArticleTableView({ embed, reveal: true });
+		return;
+	}
+
+	if (control.dataset.action === "select-table-sort-column") {
+		tableState.sortColumn = Number(control.value);
+		tableState.sortDirection = tableState.sortColumn >= 0 ? "ascending" : "none";
+		applyArticleTableView({ embed, reveal: false });
+		return;
+	}
+
+	if (control.dataset.action === "select-table-sort-direction" && tableState.sortColumn >= 0) {
+		tableState.sortDirection = control.value === "descending" ? "descending" : "ascending";
+		applyArticleTableView({ embed, reveal: false });
+	}
 }
 
 /**
@@ -4722,6 +4825,10 @@ function getTableClipboardText({ table }) {
 	const lines = [];
 
 	for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+		if (rows[rowIndex].hidden) {
+			continue;
+		}
+
 		const cells = rows[rowIndex].querySelectorAll("th, td");
 		const values = [];
 
@@ -4742,6 +4849,813 @@ function getTableClipboardText({ table }) {
  */
 function normalizeTableCellText(text) {
 	return text.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Normalizes table text for case-insensitive filtering.
+ * @param {string} text
+ * @returns {string}
+ */
+function normalizeTableFilterText(text) {
+	return normalizeTableCellText(text)
+		.normalize("NFKD")
+		.replace(/\p{M}/gu, "")
+		.toLocaleLowerCase();
+}
+
+/**
+ * Initializes sorting, filtering, and height controls for rendered tables.
+ * @returns {void}
+ */
+function initializeArticleTables() {
+	const article = select(selectors.article);
+	const embeds = article.querySelectorAll(".table-embed");
+
+	for (let index = 0; index < embeds.length; index += 1) {
+		const embed = embeds[index];
+		const scrollContainer = embed.querySelector(".table-scroll");
+		const table = scrollContainer?.querySelector("table");
+		const actions = embed.querySelector(".table-header-actions");
+
+		if (!scrollContainer || !table || !actions) {
+			continue;
+		}
+
+		const dimensions = getTableDimensions({ table });
+		const tableState = createArticleTableState({
+			dimensions,
+			embed,
+			index,
+			scrollContainer,
+			table
+		});
+
+		if (!tableState) {
+			continue;
+		}
+
+		articleTableStates.set(embed, tableState);
+		createArticleTableSortControls({ tableState });
+		createArticleTableTools({ actions, tableState });
+		applyArticleTableView({ embed, resetScroll: false, reveal: false });
+		initializeArticleTableHeightControl({ actions, tableState });
+	}
+}
+
+/**
+ * Creates cached state for one rendered article table.
+ * @param {object} params
+ * @param {{ rows: number, columns: number }} params.dimensions
+ * @param {HTMLElement} params.embed
+ * @param {number} params.index
+ * @param {HTMLElement} params.scrollContainer
+ * @param {HTMLTableElement} params.table
+ * @returns {object|null}
+ */
+function createArticleTableState({ dimensions, embed, index, scrollContainer, table }) {
+	const body = table.tBodies[0];
+	const headers = table.querySelectorAll("thead th");
+
+	if (!body) {
+		return null;
+	}
+
+	const labels = getArticleTableColumnLabels({ headers });
+	const rows = getArticleTableRows({ body, columns: labels.length });
+	const emptyState = document.createElement("div");
+	const scrollId = `article-table-${index + 1}`;
+
+	emptyState.className = "table-empty";
+	emptyState.hidden = true;
+	emptyState.textContent = "No table rows match the current filter.";
+	scrollContainer.id = scrollId;
+	scrollContainer.append(emptyState);
+
+	return {
+		body,
+		columns: dimensions.columns,
+		dimensions,
+		embed,
+		emptyState,
+		filterColumn: -1,
+		filterInput: null,
+		filterQuery: "",
+		filterSelect: null,
+		headers: Array.from(headers),
+		heightButton: null,
+		labels,
+		rows,
+		scrollContainer,
+		scrollId,
+		sortColumn: -1,
+		sortColumnSelect: null,
+		sortDirection: "none",
+		sortDirectionSelect: null,
+		sortTypes: getArticleTableSortTypes({ columns: labels.length, rows }),
+		table,
+		toolsButton: null,
+		toolsClearButton: null,
+		toolsPanel: null,
+		visibleRows: dimensions.rows
+	};
+}
+
+/**
+ * Gets accessible plain-text labels for table columns.
+ * @param {object} params
+ * @param {NodeListOf<HTMLTableCellElement>} params.headers
+ * @returns {string[]}
+ */
+function getArticleTableColumnLabels({ headers }) {
+	const labels = [];
+
+	for (let index = 0; index < headers.length; index += 1) {
+		labels.push(normalizeTableCellText(headers[index].textContent || "") || `Column ${index + 1}`);
+	}
+
+	return labels;
+}
+
+/**
+ * Caches original table rows and their cell values.
+ * @param {object} params
+ * @param {HTMLTableSectionElement} params.body
+ * @param {number} params.columns
+ * @returns {object[]}
+ */
+function getArticleTableRows({ body, columns }) {
+	const rows = [];
+
+	for (let rowIndex = 0; rowIndex < body.rows.length; rowIndex += 1) {
+		const row = body.rows[rowIndex];
+		const values = [];
+		const filterValues = [];
+
+		for (let columnIndex = 0; columnIndex < columns; columnIndex += 1) {
+			const value = normalizeTableCellText(row.cells[columnIndex]?.textContent || "");
+
+			values.push(value);
+			filterValues.push(normalizeTableFilterText(value));
+		}
+
+		rows.push({
+			element: row,
+			filterValues,
+			originalIndex: rowIndex,
+			values
+		});
+	}
+
+	return rows;
+}
+
+/**
+ * Infers conservative sort types for table columns.
+ * @param {object} params
+ * @param {number} params.columns
+ * @param {object[]} params.rows
+ * @returns {string[]}
+ */
+function getArticleTableSortTypes({ columns, rows }) {
+	const types = [];
+
+	for (let columnIndex = 0; columnIndex < columns; columnIndex += 1) {
+		const values = [];
+
+		for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+			if (rows[rowIndex].values[columnIndex]) {
+				values.push(rows[rowIndex].values[columnIndex]);
+			}
+		}
+
+		types.push(inferArticleTableSortType(values));
+	}
+
+	return types;
+}
+
+/**
+ * Infers a number, ISO date, or text comparator for one column.
+ * @param {string[]} values
+ * @returns {string}
+ */
+function inferArticleTableSortType(values) {
+	if (!values.length) {
+		return "text";
+	}
+
+	let numbers = true;
+	let dates = true;
+
+	for (let index = 0; index < values.length; index += 1) {
+		numbers = numbers && parseArticleTableNumber(values[index]) !== null;
+		dates = dates && isArticleTableIsoDate(values[index]);
+	}
+
+	if (numbers) {
+		return "number";
+	}
+
+	return dates ? "date" : "text";
+}
+
+/**
+ * Adds direct sort buttons to table column headings.
+ * @param {object} params
+ * @param {object} params.tableState
+ * @returns {void}
+ */
+function createArticleTableSortControls({ tableState }) {
+	if (tableState.rows.length < 2) {
+		return;
+	}
+
+	for (let index = 0; index < tableState.headers.length; index += 1) {
+		const header = tableState.headers[index];
+		const layout = document.createElement("span");
+		const content = document.createElement("span");
+		const button = document.createElement("button");
+
+		layout.className = "table-heading-layout";
+		content.className = "table-heading-content";
+		button.className = "table-sort-button";
+		button.type = "button";
+		button.dataset.action = "sort-table-column";
+		button.dataset.column = String(index);
+		button.setAttribute("aria-label", `Sort by ${tableState.labels[index]} ascending`);
+		button.title = `Sort by ${tableState.labels[index]} ascending`;
+		button.innerHTML = `<i class="fa-solid fa-sort" aria-hidden="true"></i>`;
+
+		while (header.firstChild) {
+			content.append(header.firstChild);
+		}
+
+		layout.append(content, button);
+		header.append(layout);
+	}
+}
+
+/**
+ * Adds the scoped filter and responsive sort panel to a long table.
+ * @param {object} params
+ * @param {HTMLElement} params.actions
+ * @param {object} params.tableState
+ * @returns {void}
+ */
+function createArticleTableTools({ actions, tableState }) {
+	if (tableState.rows.length <= maximumUncontrolledTableRows || !tableState.labels.length) {
+		return;
+	}
+
+	const button = document.createElement("button");
+	const panel = document.createElement("div");
+	const panelId = `${tableState.scrollId}-tools`;
+	const columnOptions = createArticleTableColumnOptions({ labels: tableState.labels });
+
+	button.className = "table-action";
+	button.type = "button";
+	button.dataset.action = "toggle-table-tools";
+	button.setAttribute("aria-controls", panelId);
+	button.setAttribute("aria-expanded", "false");
+	button.setAttribute("aria-label", "Table tools");
+	button.title = "Table tools";
+	button.innerHTML = `<i class="fa-solid fa-sliders" aria-hidden="true"></i><span>Tools</span>`;
+
+	panel.className = "table-tools";
+	panel.id = panelId;
+	panel.hidden = true;
+	panel.setAttribute("aria-label", "Table tools");
+	panel.innerHTML = `
+		<label class="table-tools-field table-tools-search">
+			<span class="table-tools-label">Filter</span>
+			<span class="table-filter-input">
+				<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+				<input type="search" placeholder="Filter rows…" autocomplete="off" data-action="filter-table">
+			</span>
+		</label>
+		<label class="table-tools-field">
+			<span class="table-tools-label">Filter column</span>
+			<select data-action="filter-table-column">
+				<option value="-1">All columns</option>
+				${columnOptions}
+			</select>
+		</label>
+		<label class="table-tools-field">
+			<span class="table-tools-label">Sort by</span>
+			<select data-action="select-table-sort-column">
+				<option value="-1">Original order</option>
+				${columnOptions}
+			</select>
+		</label>
+		<label class="table-tools-field">
+			<span class="table-tools-label">Direction</span>
+			<select data-action="select-table-sort-direction" disabled>
+				<option value="ascending">Ascending</option>
+				<option value="descending">Descending</option>
+			</select>
+		</label>
+		<button class="table-tools-clear" type="button" data-action="clear-table-tools" disabled>
+			<i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+			<span>Reset</span>
+		</button>
+	`;
+
+	tableState.toolsButton = button;
+	tableState.toolsPanel = panel;
+	tableState.toolsClearButton = panel.querySelector("[data-action='clear-table-tools']");
+	tableState.filterInput = panel.querySelector("[data-action='filter-table']");
+	tableState.filterSelect = panel.querySelector("[data-action='filter-table-column']");
+	tableState.sortColumnSelect = panel.querySelector("[data-action='select-table-sort-column']");
+	tableState.sortDirectionSelect = panel.querySelector("[data-action='select-table-sort-direction']");
+	actions.prepend(button);
+	tableState.embed.insertBefore(panel, tableState.scrollContainer);
+}
+
+/**
+ * Creates escaped select options for table columns.
+ * @param {object} params
+ * @param {string[]} params.labels
+ * @returns {string}
+ */
+function createArticleTableColumnOptions({ labels }) {
+	const options = [];
+
+	for (let index = 0; index < labels.length; index += 1) {
+		options.push(`<option value="${index}">${escapeHtml(labels[index])}</option>`);
+	}
+
+	return options.join("");
+}
+
+/**
+ * Adds a height control when the original table exceeds the preview area.
+ * @param {object} params
+ * @param {HTMLElement} params.actions
+ * @param {object} params.tableState
+ * @returns {void}
+ */
+function initializeArticleTableHeightControl({ actions, tableState }) {
+	tableState.embed.classList.add("is-preview");
+
+	if (tableState.rows.length <= maximumUncontrolledTableRows || tableState.table.offsetHeight <= tableState.scrollContainer.clientHeight + 1) {
+		tableState.embed.classList.remove("is-preview");
+		return;
+	}
+
+	const button = createTableToggleButton({
+		scrollId: tableState.scrollId,
+		rows: tableState.rows.length
+	});
+
+	tableState.embed.dataset.tableState = "preview";
+	tableState.heightButton = button;
+	actions.append(button);
+	updateArticleTableToggle({ embed: tableState.embed, button });
+}
+
+/**
+ * Creates the state control for a long rendered table.
+ * @param {object} params
+ * @param {string} params.scrollId
+ * @param {number} params.rows
+ * @returns {HTMLButtonElement}
+ */
+function createTableToggleButton({ scrollId, rows }) {
+	const button = document.createElement("button");
+
+	button.className = "table-action";
+	button.type = "button";
+	button.dataset.action = "toggle-table";
+	button.dataset.tableRows = String(rows);
+	button.setAttribute("aria-controls", scrollId);
+	button.innerHTML = `<i class="fa-solid fa-angles-down" aria-hidden="true"></i><span>Show all</span>`;
+
+	return button;
+}
+
+/**
+ * Opens or closes one table's tools panel.
+ * @param {object} params
+ * @param {HTMLButtonElement} params.button
+ * @returns {void}
+ */
+function toggleArticleTableTools({ button }) {
+	const embed = button.closest(".table-embed");
+	const tableState = embed ? articleTableStates.get(embed) : null;
+
+	if (!embed || !tableState?.toolsPanel) {
+		return;
+	}
+
+	const open = tableState.toolsPanel.hidden;
+
+	setArticleTableToolsOpen({ open, tableState });
+
+	if (open) {
+		tableState.filterInput?.focus();
+	}
+}
+
+/**
+ * Sets the visibility and accessibility state of one table tools panel.
+ * @param {object} params
+ * @param {boolean} params.open
+ * @param {object} params.tableState
+ * @returns {void}
+ */
+function setArticleTableToolsOpen({ open, tableState }) {
+	tableState.toolsPanel.hidden = !open;
+	tableState.toolsButton.classList.toggle("is-open", open);
+	tableState.toolsButton.setAttribute("aria-expanded", String(open));
+}
+
+/**
+ * Restores the original unfiltered and unsorted table view.
+ * @param {object} params
+ * @param {HTMLButtonElement} params.button
+ * @returns {void}
+ */
+function clearArticleTableTools({ button }) {
+	const embed = button.closest(".table-embed");
+	const tableState = embed ? articleTableStates.get(embed) : null;
+
+	if (!embed || !tableState) {
+		return;
+	}
+
+	tableState.filterColumn = -1;
+	tableState.filterQuery = "";
+	tableState.sortColumn = -1;
+	tableState.sortDirection = "none";
+	applyArticleTableView({ embed, resetScroll: true, reveal: true });
+	tableState.filterInput?.focus();
+}
+
+/**
+ * Cycles a direct column sort through ascending, descending, and original order.
+ * @param {object} params
+ * @param {HTMLButtonElement} params.button
+ * @returns {void}
+ */
+function sortArticleTableByColumn({ button }) {
+	const embed = button.closest(".table-embed");
+	const tableState = embed ? articleTableStates.get(embed) : null;
+	const column = Number(button.dataset.column);
+
+	if (!embed || !tableState || !Number.isInteger(column)) {
+		return;
+	}
+
+	if (tableState.sortColumn !== column) {
+		tableState.sortColumn = column;
+		tableState.sortDirection = "ascending";
+	} else if (tableState.sortDirection === "ascending") {
+		tableState.sortDirection = "descending";
+	} else {
+		tableState.sortColumn = -1;
+		tableState.sortDirection = "none";
+	}
+
+	applyArticleTableView({ embed, resetScroll: true, reveal: false });
+}
+
+/**
+ * Applies the current filter and stable sort to a rendered table.
+ * @param {object} params
+ * @param {HTMLElement} params.embed
+ * @param {boolean} params.resetScroll
+ * @param {boolean} params.reveal
+ * @returns {void}
+ */
+function applyArticleTableView({ embed, resetScroll, reveal }) {
+	const tableState = articleTableStates.get(embed);
+
+	if (!tableState) {
+		return;
+	}
+
+	const query = normalizeTableFilterText(tableState.filterQuery);
+	const orderedRows = tableState.rows.slice();
+	const fragment = document.createDocumentFragment();
+	let visibleRows = 0;
+
+	if (tableState.sortColumn >= 0 && tableState.sortDirection !== "none") {
+		orderedRows.sort(function compareRows(firstRow, secondRow) {
+			return compareArticleTableRows({ firstRow, secondRow, tableState });
+		});
+	}
+
+	for (let index = 0; index < orderedRows.length; index += 1) {
+		const row = orderedRows[index];
+		const visible = doesArticleTableRowMatch({ query, row, tableState });
+
+		row.element.hidden = !visible;
+		row.element.classList.toggle("is-even-row", visible && visibleRows % 2 === 1);
+
+		if (visible) {
+			visibleRows += 1;
+		}
+
+		fragment.append(row.element);
+	}
+
+	tableState.body.append(fragment);
+	tableState.visibleRows = visibleRows;
+	tableState.table.hidden = visibleRows === 0;
+	tableState.emptyState.hidden = visibleRows !== 0;
+
+	if (resetScroll) {
+		tableState.scrollContainer.scrollTop = 0;
+	}
+
+	if (tableState.heightButton && reveal) {
+		setArticleTableState({ embed, stateName: "preview" });
+	} else if (tableState.heightButton && visibleRows <= maximumUncontrolledTableRows && embed.dataset.tableState === "expanded") {
+		setArticleTableState({ embed, stateName: "preview" });
+	}
+
+	updateArticleTableSummary({ tableState });
+	updateArticleTableSortControls({ tableState });
+	updateArticleTableTools({ tableState });
+
+	if (tableState.heightButton) {
+		tableState.heightButton.dataset.tableRows = String(visibleRows);
+		updateArticleTableToggle({ embed, button: tableState.heightButton });
+	}
+}
+
+/**
+ * Checks whether one row matches the active scoped filter.
+ * @param {object} params
+ * @param {string} params.query
+ * @param {object} params.row
+ * @param {object} params.tableState
+ * @returns {boolean}
+ */
+function doesArticleTableRowMatch({ query, row, tableState }) {
+	if (!query) {
+		return true;
+	}
+
+	if (tableState.filterColumn >= 0) {
+		return Boolean(row.filterValues[tableState.filterColumn]?.includes(query));
+	}
+
+	for (let index = 0; index < row.filterValues.length; index += 1) {
+		if (row.filterValues[index].includes(query)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Compares two cached rows using the active stable column sort.
+ * @param {object} params
+ * @param {object} params.firstRow
+ * @param {object} params.secondRow
+ * @param {object} params.tableState
+ * @returns {number}
+ */
+function compareArticleTableRows({ firstRow, secondRow, tableState }) {
+	const column = tableState.sortColumn;
+	const firstValue = firstRow.values[column] || "";
+	const secondValue = secondRow.values[column] || "";
+
+	if (!firstValue || !secondValue) {
+		if (!firstValue && !secondValue) {
+			return firstRow.originalIndex - secondRow.originalIndex;
+		}
+
+		return firstValue ? -1 : 1;
+	}
+
+	const type = tableState.sortTypes[column];
+	let comparison = 0;
+
+	if (type === "number") {
+		comparison = parseArticleTableNumber(firstValue) - parseArticleTableNumber(secondValue);
+	} else if (type === "date") {
+		comparison = Date.parse(firstValue) - Date.parse(secondValue);
+	} else {
+		comparison = tableTextCollator.compare(firstValue, secondValue);
+	}
+
+	if (!comparison) {
+		return firstRow.originalIndex - secondRow.originalIndex;
+	}
+
+	return tableState.sortDirection === "descending" ? comparison * -1 : comparison;
+}
+
+/**
+ * Parses conservative Markdown-table number formats.
+ * @param {string} value
+ * @returns {number|null}
+ */
+function parseArticleTableNumber(value) {
+	const normalized = value.replace(/\u00a0/g, " ").trim();
+
+	if (!/^[+-]?(?:\d{1,3}(?:[, ]\d{3})+|\d+)(?:\.\d+)?%?$/.test(normalized)) {
+		return null;
+	}
+
+	const number = Number(normalized.replace(/[, %]/g, ""));
+
+	return Number.isFinite(number) ? number : null;
+}
+
+/**
+ * Checks whether a value is an unambiguous ISO date.
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isArticleTableIsoDate(value) {
+	return /^\d{4}-\d{2}-\d{2}(?:[T ]\S+)?$/.test(value) && Number.isFinite(Date.parse(value));
+}
+
+/**
+ * Updates the generated table summary for filtered row counts.
+ * @param {object} params
+ * @param {object} params.tableState
+ * @returns {void}
+ */
+function updateArticleTableSummary({ tableState }) {
+	const summary = tableState.embed.querySelector(".table-summary");
+
+	if (!summary) {
+		return;
+	}
+
+	summary.textContent = formatTableSummary({
+		columns: tableState.columns,
+		rows: tableState.visibleRows,
+		totalRows: tableState.rows.length
+	});
+}
+
+/**
+ * Formats generated table dimension metadata.
+ * @param {object} params
+ * @param {number} params.columns
+ * @param {number} params.rows
+ * @param {number} params.totalRows
+ * @returns {string}
+ */
+function formatTableSummary({ columns, rows, totalRows }) {
+	const rowLabel = totalRows !== rows
+		? `${formatNumber(rows)} of ${formatNumber(totalRows)} rows`
+		: `${formatNumber(rows)} ${rows === 1 ? "row" : "rows"}`;
+
+	return `${rowLabel} × ${formatNumber(columns)} ${columns === 1 ? "column" : "columns"}`;
+}
+
+/**
+ * Synchronizes direct heading sort buttons and accessibility state.
+ * @param {object} params
+ * @param {object} params.tableState
+ * @returns {void}
+ */
+function updateArticleTableSortControls({ tableState }) {
+	for (let index = 0; index < tableState.headers.length; index += 1) {
+		const header = tableState.headers[index];
+		const button = header.querySelector("[data-action='sort-table-column']");
+
+		if (!button) {
+			continue;
+		}
+
+		const active = tableState.sortColumn === index;
+		const descending = active && tableState.sortDirection === "descending";
+		const accessibleLabel = !active
+			? `Sort by ${tableState.labels[index]} ascending`
+			: descending ? "Restore original table order" : `Sort ${tableState.labels[index]} descending`;
+		const icon = button.querySelector("i");
+
+		button.classList.toggle("is-active", active);
+		button.setAttribute("aria-label", accessibleLabel);
+		button.title = accessibleLabel;
+
+		if (active) {
+			header.setAttribute("aria-sort", tableState.sortDirection);
+		} else {
+			header.removeAttribute("aria-sort");
+		}
+
+		if (icon) {
+			icon.className = active
+				? `fa-solid fa-arrow-${descending ? "down" : "up"}`
+				: "fa-solid fa-sort";
+		}
+	}
+}
+
+/**
+ * Synchronizes table tool fields and active-state styling.
+ * @param {object} params
+ * @param {object} params.tableState
+ * @returns {void}
+ */
+function updateArticleTableTools({ tableState }) {
+	if (!tableState.toolsPanel) {
+		return;
+	}
+
+	const active = Boolean(tableState.filterQuery) || tableState.sortColumn >= 0;
+	const resettable = active || tableState.filterColumn >= 0;
+
+	if (tableState.filterInput.value !== tableState.filterQuery) {
+		tableState.filterInput.value = tableState.filterQuery;
+	}
+
+	tableState.filterSelect.value = String(tableState.filterColumn);
+	tableState.sortColumnSelect.value = String(tableState.sortColumn);
+	tableState.sortDirectionSelect.value = tableState.sortDirection === "descending" ? "descending" : "ascending";
+	tableState.sortDirectionSelect.disabled = tableState.sortColumn < 0;
+	tableState.toolsClearButton.disabled = !resettable;
+	tableState.toolsButton.classList.toggle("is-active", active);
+	tableState.toolsButton.setAttribute("aria-label", active ? "Table tools, refinements active" : "Table tools");
+	tableState.toolsButton.title = active ? "Table tools, refinements active" : "Table tools";
+}
+
+/**
+ * Advances a long table from preview to expanded to collapsed.
+ * @param {object} params
+ * @param {HTMLButtonElement} params.button
+ * @returns {void}
+ */
+function toggleArticleTable({ button }) {
+	const embed = button.closest(".table-embed");
+	const scrollContainer = embed?.querySelector(".table-scroll");
+
+	if (!embed || !scrollContainer) {
+		return;
+	}
+
+	const tableState = articleTableStates.get(embed);
+	const currentState = embed.dataset.tableState;
+	const nextState = currentState === "preview"
+		? (tableState?.visibleRows > maximumUncontrolledTableRows ? "expanded" : "collapsed")
+		: currentState === "expanded" ? "collapsed" : "preview";
+	const previewScrollTop = currentState === "preview" ? scrollContainer.scrollTop : 0;
+
+	setArticleTableState({ embed, stateName: nextState });
+	updateArticleTableToggle({ embed, button });
+
+	if (nextState === "expanded" && previewScrollTop > 0) {
+		select(selectors.article).scrollTop += previewScrollTop;
+	}
+
+	if (nextState === "collapsed") {
+		scrollContainer.scrollTo({ left: 0, top: 0 });
+	}
+}
+
+/**
+ * Applies one of the three supported long-table states.
+ * @param {object} params
+ * @param {HTMLElement} params.embed
+ * @param {string} params.stateName
+ * @returns {void}
+ */
+function setArticleTableState({ embed, stateName }) {
+	embed.dataset.tableState = stateName;
+	embed.classList.toggle("is-preview", stateName === "preview");
+	embed.classList.toggle("is-expanded", stateName === "expanded");
+	embed.classList.toggle("is-collapsed", stateName === "collapsed");
+}
+
+/**
+ * Updates the long-table control to describe its next action.
+ * @param {object} params
+ * @param {HTMLElement} params.embed
+ * @param {HTMLButtonElement} params.button
+ * @returns {void}
+ */
+function updateArticleTableToggle({ embed, button }) {
+	const icon = button.querySelector("i");
+	const label = button.querySelector("span");
+	const rows = formatNumber(Number(button.dataset.tableRows));
+	const stateName = embed.dataset.tableState;
+	const canExpand = Number(button.dataset.tableRows) > maximumUncontrolledTableRows;
+	const control = stateName === "preview" && canExpand
+		? { label: "Show all", accessibleLabel: `Show all ${rows} table rows`, icon: "fa-solid fa-angles-down" }
+		: stateName === "expanded" || stateName === "preview"
+			? { label: "Collapse", accessibleLabel: "Collapse table", icon: "fa-solid fa-chevron-up" }
+			: { label: "Preview", accessibleLabel: "Preview table", icon: "fa-solid fa-chevron-down" };
+
+	button.setAttribute("aria-expanded", String(stateName !== "collapsed"));
+	button.setAttribute("aria-label", control.accessibleLabel);
+	button.title = control.accessibleLabel;
+
+	if (icon) {
+		icon.className = control.icon;
+	}
+
+	if (label) {
+		label.textContent = control.label;
+	}
 }
 
 /**
@@ -5084,7 +5998,21 @@ function handleDocumentKeyUp() {
  * @returns {void}
  */
 function handleDocumentKeyDown(event) {
-	if (event.key === "Escape" && state.settingsOpen) {
+	if (event.key !== "Escape") {
+		return;
+	}
+
+	const openTableTools = select(".table-tools:not([hidden])");
+	const tableEmbed = openTableTools?.closest(".table-embed");
+	const tableState = tableEmbed ? articleTableStates.get(tableEmbed) : null;
+
+	if (tableState) {
+		setArticleTableToolsOpen({ open: false, tableState });
+		tableState.toolsButton.focus();
+		return;
+	}
+
+	if (state.settingsOpen) {
 		closeQuickSettings();
 		select("[data-action='toggle-settings']").focus();
 	}
@@ -6417,19 +7345,27 @@ function wrapRenderedTables({ template }) {
 function createTableHeader({ table }) {
 	const header = document.createElement("figcaption");
 	const summary = document.createElement("span");
+	const actions = document.createElement("span");
 	const button = document.createElement("button");
 	const dimensions = getTableDimensions({ table });
 
 	header.className = "table-header";
 	summary.className = "table-summary";
-	summary.textContent = `${formatNumber(dimensions.rows)} ${dimensions.rows === 1 ? "row" : "rows"} × ${formatNumber(dimensions.columns)} ${dimensions.columns === 1 ? "column" : "columns"}`;
+	summary.setAttribute("aria-live", "polite");
+	summary.textContent = formatTableSummary({
+		columns: dimensions.columns,
+		rows: dimensions.rows,
+		totalRows: dimensions.rows
+	});
+	actions.className = "table-header-actions";
 	button.className = "table-action";
 	button.type = "button";
 	button.dataset.action = "copy-table";
 	button.setAttribute("aria-label", "Copy table");
 	button.title = "Copy table";
 	button.innerHTML = `<i class="fa-regular fa-copy" aria-hidden="true"></i><span>Copy</span>`;
-	header.append(summary, button);
+	actions.append(button);
+	header.append(summary, actions);
 
 	return header;
 }
