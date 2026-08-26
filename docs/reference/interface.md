@@ -39,6 +39,32 @@ The Search view uses a single **Search notes...** field to match manifest titles
 
 Library, Search, and Details use active emphasis only while their corresponding side menu is open. Closing a menu from either the floating navigation or the menu's own close button removes that emphasis. Home is a navigation action rather than a toggle, so it uses hover and focus feedback but never keeps an active highlight.
 
+## Selected text tools
+
+Selecting at least five characters inside an open article reveals a compact tool menu beside the selection. Its summary reports the word and character counts, **Copy** sends the plain selected text to the clipboard, and **QR code** creates a temporary code in the Details menu for selections of up to 100 characters. Longer selections keep the other actions and omit only the QR action. The menu follows the active Light, Sand, Ocean, or Dark palette, stays within the visible viewport, and closes after an action, an outside press, page scrolling, resizing, or Escape.
+
+Site authors control the external search actions with `selectionMenu.searchProviders` in `config/app-config.json`:
+
+```json
+"selectionMenu": {
+	"searchProviders": [
+		{
+			"label": "Google",
+			"icon": "fa-brands fa-google",
+			"urlTemplate": "https://www.google.com/search?q={selection}"
+		},
+		{
+			"label": "Brave",
+			"urlTemplate": "https://search.brave.com/search?q={selection}"
+		}
+	]
+}
+```
+
+`label` supplies the visible action name. The optional `icon` accepts a Font Awesome Free class and otherwise falls back to a magnifying glass. Every HTTP(S) `urlTemplate` must contain `{selection}`; Papyrus replaces each occurrence with the percent-encoded selected text, so authors should leave the token itself unencoded. Provider order in the array becomes menu order, and an empty array removes search forwarding entirely.
+
+One or two providers remain direct actions. Three or more are collected behind an inline **Search with** disclosure, which keeps the initial menu compact and provides a bounded, independently scrollable list when many services are configured. Escape closes the provider list before dismissing the complete menu. See [[workflow/setup|Setup workflow]] for the central configuration flow.
+
 ## Quick settings
 
 Quick settings collect every content experience control in one place: focus timer, theme, sound, typeface, alignment, text size, leading, and reading measure. The timer begins at 5 minutes; its duration button cycles through 5, 10, 15, and 20 minutes, while the adjacent start control begins or restarts the countdown. The countdown remains active while navigating between the home screen and articles. It clears after completion, reports that it finished, and includes a close control for ending it early.

@@ -15,6 +15,7 @@
 		"externalLinks",
 		"maps",
 		"periodicTable",
+		"selectionMenu",
 		"reading",
 		"obsidian",
 		"linktree",
@@ -250,6 +251,46 @@
 					"minLength": 1,
 					"pattern": "^https?://.*\\{(?:[zZ]|symbol)\\}.*$",
 					"description": "External element URL template containing {Z} for atomic number or {symbol} for the standard element symbol. Both tokens are substituted when present."
+				}
+			}
+		},
+		"selectionMenu": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"searchProviders"
+			],
+			"properties": {
+				"searchProviders": {
+					"type": "array",
+					"description": "Ordered external search actions shown for selected article text. An empty array disables search forwarding.",
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"label",
+							"urlTemplate"
+						],
+						"properties": {
+							"label": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Menu label for this search provider."
+							},
+							"icon": {
+								"type": "string",
+								"minLength": 1,
+								"pattern": "^fa-(solid|regular|brands) fa-[a-z0-9-]+(?: fa-[a-z0-9-]+)*$",
+								"description": "Optional Font Awesome class identifier. A generic search icon is used when omitted."
+							},
+							"urlTemplate": {
+								"type": "string",
+								"minLength": 1,
+								"pattern": "^https?://.*\\{selection\\}.*$",
+								"description": "HTTP(S) search URL containing {selection}. Papyrus replaces every token with the percent-encoded selected text."
+							}
+						}
+					}
 				}
 			}
 		},

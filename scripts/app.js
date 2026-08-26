@@ -52,6 +52,8 @@ const state = {
 	qrCodeTimer: 0,
 	searchResultIndex: -1,
 	selectedText: "",
+	selectionRect: null,
+	selectionSearchProviders: [],
 	articleScrollFrame: 0,
 	theme: "light",
 	textAlign: "left",
@@ -71,6 +73,7 @@ const noteLoadPromises = new Map();
 const contentManifestSchemaVersion = 1;
 const minimumSelectionCharacters = 5;
 const maximumQrCodeCharacters = 100;
+const maximumInlineSelectionSearchProviders = 2;
 const minimumScrollTopOffset = 800;
 const maximumUncontrolledTableRows = 6;
 const tableTextCollator = new Intl.Collator(undefined, {
@@ -206,6 +209,11 @@ const selectors = {
 	scrollTopButton: "[data-action='scroll-top']",
 	selectionCount: "[data-selection-count]",
 	selectionMenu: "[data-selection-menu]",
+	selectionSearch: "[data-selection-search]",
+	selectionSearchDirect: "[data-selection-search-direct]",
+	selectionSearchOptions: "[data-selection-search-options]",
+	selectionSearchToggle: "[data-action='toggle-selection-search']",
+	selectionSearchToggleCount: "[data-selection-search-count]",
 	soundChoice: "[data-sound-choice]",
 	sourceArticleLink: "[data-source-article-link]",
 	sourceDownloadLink: "[data-source-download-link]",
@@ -268,6 +276,7 @@ async function loadVault() {
 		}
 
 		state.config = startupConfig;
+		renderSelectionSearchProviders();
 		loadAppearance();
 		applySoundSettings();
 		bindCuelume();
@@ -670,8 +679,7 @@ function bindEvents() {
 	select("[data-action='open-obsidian']").addEventListener("click", openActiveArticleInObsidian);
 	select("[data-action='copy-selection']").addEventListener("click", copySelectedText);
 	select("[data-action='qr-selection']").addEventListener("click", createQrCodeFromSelection);
-	select("[data-action='search-selection-google']").addEventListener("click", searchSelectedTextWithGoogle);
-	select("[data-action='search-selection-brave']").addEventListener("click", searchSelectedTextWithBrave);
+	select(selectors.selectionMenu).addEventListener("click", handleSelectionMenuClick);
 	select(selectors.searchInput).addEventListener("input", handleSearchInput);
 	select(selectors.searchInput).addEventListener("keydown", handleSearchKeyDown);
 	select(selectors.article).addEventListener("click", handleArticleClick);
@@ -690,7 +698,7 @@ function bindEvents() {
 	document.addEventListener("click", handleDocumentClick);
 	document.addEventListener("keyup", handleDocumentKeyUp);
 	document.addEventListener("keydown", handleDocumentKeyDown);
-	window.addEventListener("scroll", hideSelectionMenu, true);
+	window.addEventListener("scroll", handleSelectionMenuScroll, true);
 	window.addEventListener("resize", hideSelectionMenu);
 	window.addEventListener("resize", scheduleArticleScrollState);
 	bindTextOrientationControls();
@@ -5828,6 +5836,162 @@ function handleSelectionChange() {
 }
 
 /**
+ * Renders configured search providers in the selected-text menu.
+ * @returns {void}
+ */
+function renderSelectionSearchProviders() {
+	const providers = getSelectionSearchProviders();
+	const search = select(selectors.selectionSearch);
+	const direct = select(selectors.selectionSearchDirect);
+	const options = select(selectors.selectionSearchOptions);
+	const toggle = select(selectors.selectionSearchToggle);
+	const toggleCount = select(selectors.selectionSearchToggleCount);
+	const useDisclosure = providers.length > maximumInlineSelectionSearchProviders;
+	const target = useDisclosure ? options : direct;
+
+	state.selectionSearchProviders = providers;
+	direct.replaceChildren();
+	options.replaceChildren();
+	direct.hidden = useDisclosure;
+	options.hidden = true;
+	toggle.hidden = !useDisclosure;
+	toggle.setAttribute("aria-expanded", "false");
+	toggleCount.textContent = formatNumber(providers.length);
+	search.hidden = !providers.length;
+	search.classList.remove("is-expanded");
+
+	for (let index = 0; index < providers.length; index += 1) {
+		target.append(createSelectionSearchButton({ provider: providers[index], providerIndex: index }));
+	}
+}
+
+/**
+ * Gets valid selected-text search providers from app config.
+ * @returns {Array<object>}
+ */
+function getSelectionSearchProviders() {
+	const configured = state.config.selectionMenu?.searchProviders;
+	const providers = [];
+
+	if (!Array.isArray(configured)) {
+		return providers;
+	}
+
+	for (let index = 0; index < configured.length; index += 1) {
+		const provider = configured[index];
+		const label = String(provider?.label || "").trim();
+		const urlTemplate = String(provider?.urlTemplate || "").trim();
+		const configuredIcon = String(provider?.icon || "").trim();
+		const icon = /^fa-(solid|regular|brands) fa-[a-z0-9-]+(?: fa-[a-z0-9-]+)*$/.test(configuredIcon)
+			? configuredIcon
+			: "fa-solid fa-magnifying-glass";
+
+		if (!label || !isSelectionSearchUrlTemplate({ urlTemplate })) {
+			continue;
+		}
+
+		providers.push({ icon, label, urlTemplate });
+	}
+
+	return providers;
+}
+
+/**
+ * Checks a search URL template before it is exposed as an action.
+ * @param {object} params
+ * @param {string} params.urlTemplate
+ * @returns {boolean}
+ */
+function isSelectionSearchUrlTemplate({ urlTemplate }) {
+	if (!urlTemplate.includes("{selection}")) {
+		return false;
+	}
+
+	try {
+		const url = new URL(urlTemplate.replaceAll("{selection}", "selected-text"));
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch (error) {
+		return false;
+	}
+}
+
+/**
+ * Creates a configured selected-text search action.
+ * @param {object} params
+ * @param {object} params.provider
+ * @param {number} params.providerIndex
+ * @returns {HTMLButtonElement}
+ */
+function createSelectionSearchButton({ provider, providerIndex }) {
+	const button = document.createElement("button");
+	const icon = document.createElement("i");
+	const label = document.createElement("span");
+
+	button.type = "button";
+	button.dataset.selectionSearchProvider = String(providerIndex);
+	button.setAttribute("aria-label", `Search selected text with ${provider.label} (opens in a new tab)`);
+	addNavigationSound({ element: button, cue: "droplet" });
+	icon.className = provider.icon;
+	icon.setAttribute("aria-hidden", "true");
+	label.textContent = provider.label;
+	button.append(icon, label);
+	return button;
+}
+
+/**
+ * Handles delegated selected-text menu actions.
+ * @param {MouseEvent} event
+ * @returns {void}
+ */
+function handleSelectionMenuClick(event) {
+	const target = event.target instanceof Element ? event.target : null;
+	const button = target?.closest("button");
+
+	if (!button || !select(selectors.selectionMenu).contains(button)) {
+		return;
+	}
+
+	if (button.matches(selectors.selectionSearchToggle)) {
+		const expanded = button.getAttribute("aria-expanded") !== "true";
+		setSelectionSearchExpanded({ expanded });
+		return;
+	}
+
+	const providerIndex = Number(button.dataset.selectionSearchProvider);
+
+	if (Number.isInteger(providerIndex) && state.selectionSearchProviders[providerIndex]) {
+		searchSelectedText({ provider: state.selectionSearchProviders[providerIndex] });
+	}
+}
+
+/**
+ * Expands or collapses the configured provider list.
+ * @param {object} params
+ * @param {boolean} params.expanded
+ * @returns {void}
+ */
+function setSelectionSearchExpanded({ expanded }) {
+	const menu = select(selectors.selectionMenu);
+	const search = select(selectors.selectionSearch);
+	const options = select(selectors.selectionSearchOptions);
+	const toggle = select(selectors.selectionSearchToggle);
+	const disclosureIcon = toggle.querySelector(".selection-disclosure-icon");
+
+	toggle.setAttribute("aria-expanded", String(expanded));
+	options.hidden = !expanded;
+	search.classList.toggle("is-expanded", expanded);
+	disclosureIcon.className = expanded
+		? "fa-solid fa-chevron-up selection-disclosure-icon"
+		: "fa-solid fa-chevron-down selection-disclosure-icon";
+
+	if (!menu.hidden && state.selectionRect) {
+		window.requestAnimationFrame(() => {
+			positionSelectionMenu({ menu, rect: state.selectionRect });
+		});
+	}
+}
+
+/**
  * Renders the selection tools menu near selected article text.
  * @returns {void}
  */
@@ -5835,12 +5999,12 @@ function renderSelectionMenu() {
 	const menu = select(selectors.selectionMenu);
 	const selection = window.getSelection();
 
-	if (!selection || selection.isCollapsed || !state.activePath) {
-		hideSelectionMenu();
+	if (!menu.hidden && menu.contains(document.activeElement)) {
 		return;
 	}
 
-	if (menu.contains(document.activeElement)) {
+	if (!selection || selection.isCollapsed || !state.activePath) {
+		hideSelectionMenu();
 		return;
 	}
 
@@ -5864,7 +6028,17 @@ function renderSelectionMenu() {
 		return;
 	}
 
+	if (state.selectedText !== selectedText) {
+		setSelectionSearchExpanded({ expanded: false });
+	}
+
 	state.selectedText = selectedText;
+	state.selectionRect = {
+		bottom: rect.bottom,
+		left: rect.left,
+		top: rect.top,
+		width: rect.width
+	};
 	select(selectors.selectionCount).textContent = getSelectionCountLabel({ text: selectedText });
 	select(selectors.qrSelectionButton).hidden = countCharacters(selectedText) > maximumQrCodeCharacters;
 	menu.hidden = false;
@@ -5880,7 +6054,11 @@ function renderSelectionMenu() {
  * @returns {string}
  */
 function getSelectionCountLabel({ text }) {
-	return `${formatNumber(countWords(text))} words, ${formatNumber(countCharacters(text))} characters`;
+	const words = countWords(text);
+	const characters = countCharacters(text);
+	const wordLabel = words === 1 ? "word" : "words";
+	const characterLabel = characters === 1 ? "character" : "characters";
+	return `${formatNumber(words)} ${wordLabel}, ${formatNumber(characters)} ${characterLabel}`;
 }
 
 /**
@@ -5928,21 +6106,40 @@ function getSelectionRect({ range }) {
  * @returns {void}
  */
 function positionSelectionMenu({ menu, rect }) {
-	const gap = 18;
-	const width = menu.offsetWidth || 260;
-	const height = menu.offsetHeight || 74;
-	const topAbove = rect.top - height - gap;
-	const topBelow = rect.bottom + gap;
-	const left = Math.min(
-		window.innerWidth - width - gap,
-		Math.max(gap, rect.left + rect.width / 2 - width / 2)
+	const edge = 12;
+	const anchorGap = 14;
+	menu.style.removeProperty("max-height");
+	const width = menu.offsetWidth || 236;
+	const naturalHeight = menu.offsetHeight || 160;
+	const spaceAbove = rect.top - edge - anchorGap;
+	const spaceBelow = window.innerHeight - rect.bottom - edge - anchorGap;
+	const placement = naturalHeight <= spaceAbove || (naturalHeight > spaceBelow && spaceAbove >= spaceBelow)
+		? "above"
+		: "below";
+	const availableHeight = placement === "above" ? spaceAbove : spaceBelow;
+	const maximumHeight = Math.min(
+		window.innerHeight - edge * 2,
+		Math.max(80, availableHeight)
 	);
-	const top = topAbove >= gap
-		? topAbove
-		: Math.min(window.innerHeight - height - gap, topBelow);
+	menu.style.maxHeight = `${Math.floor(maximumHeight)}px`;
+	const height = menu.offsetHeight || Math.min(naturalHeight, maximumHeight);
+	const preferredTop = placement === "above"
+		? rect.top - height - anchorGap
+		: rect.bottom + anchorGap;
+	const left = Math.min(
+		window.innerWidth - width - edge,
+		Math.max(edge, rect.left + rect.width / 2 - width / 2)
+	);
+	const top = Math.min(
+		window.innerHeight - height - edge,
+		Math.max(edge, preferredTop)
+	);
+	const arrowLeft = Math.min(width - 18, Math.max(18, rect.left + rect.width / 2 - left));
 
-	menu.style.left = `${left}px`;
-	menu.style.top = `${Math.max(gap, top)}px`;
+	menu.dataset.placement = placement;
+	menu.style.setProperty("--selection-arrow-left", `${arrowLeft}px`);
+	menu.style.left = `${Math.max(edge, left)}px`;
+	menu.style.top = `${Math.max(edge, top)}px`;
 }
 
 /**
@@ -5960,6 +6157,20 @@ function handleDocumentPointerDown(event) {
 
 	if (state.settingsOpen && !settingsWrap) {
 		closeQuickSettings();
+	}
+}
+
+/**
+ * Hides the selected-text menu for page scrolling while allowing its provider list to scroll.
+ * @param {Event} event
+ * @returns {void}
+ */
+function handleSelectionMenuScroll(event) {
+	const menu = select(selectors.selectionMenu);
+	const target = event.target instanceof Node ? event.target : null;
+
+	if (!target || !menu.contains(target)) {
+		hideSelectionMenu();
 	}
 }
 
@@ -6002,6 +6213,20 @@ function handleDocumentKeyDown(event) {
 		return;
 	}
 
+	const selectionMenu = select(selectors.selectionMenu);
+
+	if (!selectionMenu.hidden) {
+		const toggle = select(selectors.selectionSearchToggle);
+
+		if (toggle.getAttribute("aria-expanded") === "true") {
+			setSelectionSearchExpanded({ expanded: false });
+			return;
+		}
+
+		hideSelectionMenu();
+		return;
+	}
+
 	const openTableTools = select(".table-tools:not([hidden])");
 	const tableEmbed = openTableTools?.closest(".table-embed");
 	const tableState = tableEmbed ? articleTableStates.get(tableEmbed) : null;
@@ -6023,7 +6248,11 @@ function handleDocumentKeyDown(event) {
  * @returns {void}
  */
 function hideSelectionMenu() {
-	select(selectors.selectionMenu).hidden = true;
+	const menu = select(selectors.selectionMenu);
+	menu.hidden = true;
+	state.selectedText = "";
+	state.selectionRect = null;
+	setSelectionSearchExpanded({ expanded: false });
 }
 
 /**
@@ -8920,28 +9149,12 @@ function clearQrCodeBlock() {
 }
 
 /**
- * Opens a Google search for the selected article text.
- * @returns {void}
- */
-function searchSelectedTextWithGoogle() {
-	searchSelectedText({ baseUrl: "https://www.google.com/search?q=" });
-}
-
-/**
- * Opens a Brave search for the selected article text.
- * @returns {void}
- */
-function searchSelectedTextWithBrave() {
-	searchSelectedText({ baseUrl: "https://search.brave.com/search?q=" });
-}
-
-/**
- * Opens a search engine query for the selected article text.
+ * Opens a configured search query for the selected article text.
  * @param {object} params
- * @param {string} params.baseUrl
+ * @param {object} params.provider
  * @returns {void}
  */
-function searchSelectedText({ baseUrl }) {
+function searchSelectedText({ provider }) {
 	const text = state.selectedText;
 
 	if (!text) {
@@ -8949,8 +9162,37 @@ function searchSelectedText({ baseUrl }) {
 		return;
 	}
 
-	window.open(`${baseUrl}${encodeURIComponent(text)}`, "_blank", "noreferrer");
+	const url = getSelectionSearchUrl({ provider, text });
+
+	if (!url) {
+		showNavigationStatus({ message: "Search provider is unavailable." });
+		return;
+	}
+
+	window.open(url, "_blank", "noopener,noreferrer");
 	hideSelectionMenu();
+}
+
+/**
+ * Builds a configured search destination with an encoded selection.
+ * @param {object} params
+ * @param {object} params.provider
+ * @param {string} params.text
+ * @returns {string}
+ */
+function getSelectionSearchUrl({ provider, text }) {
+	const urlTemplate = String(provider?.urlTemplate || "").trim();
+
+	if (!isSelectionSearchUrlTemplate({ urlTemplate })) {
+		return "";
+	}
+
+	try {
+		const url = new URL(urlTemplate.replaceAll("{selection}", encodeURIComponent(text)));
+		return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+	} catch (error) {
+		return "";
+	}
 }
 
 /**

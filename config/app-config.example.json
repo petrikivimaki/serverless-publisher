@@ -53,6 +53,20 @@
 		"linkLabel": "PubChem",
 		"linkTemplate": "https://pubchem.ncbi.nlm.nih.gov/element/{Z}"
 	},
+	"selectionMenu": {
+		"searchProviders": [
+			{
+				"label": "Google",
+				"icon": "fa-brands fa-google",
+				"urlTemplate": "https://www.google.com/search?q={selection}"
+			},
+			{
+				"label": "Brave",
+				"icon": "fa-solid fa-magnifying-glass",
+				"urlTemplate": "https://search.brave.com/search?q={selection}"
+			}
+		]
+	},
 	"reading": {
 		"wordsPerMinute": 225
 	},

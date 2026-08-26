@@ -72,8 +72,8 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.12.0/dist/maplibre-gl.css"
         />
-		<link rel="stylesheet" href="styles/main.css?v=38" />
-		<script type="module" src="scripts/app.js?v=40"></script>
+		<link rel="stylesheet" href="styles/main.css?v=40" />
+		<script type="module" src="scripts/app.js?v=41"></script>
     </head>
     <body>
 		<div class="app-shell is-menu-layout-pending is-primary-menu-collapsed is-secondary-menu-collapsed" data-primary-menu-side="left">
@@ -654,30 +654,49 @@
 			</nav>
 		</div>
 
-        <div class="selection-menu" data-selection-menu hidden>
-            <div class="selection-count" data-selection-count>0 characters</div>
-            <div class="selection-actions">
-                <button type="button" data-action="copy-selection">
-                    <i class="fa-regular fa-copy" aria-hidden="true"></i>
-                    <span>Copy</span>
-                </button>
-                <button type="button" data-action="qr-selection">
-                    <i class="fa-solid fa-qrcode" aria-hidden="true"></i>
-                    <span>QR code</span>
-                </button>
-                <button type="button" data-action="search-selection-google">
-                    <i class="fa-brands fa-google" aria-hidden="true"></i>
-                    <span>Google</span>
-                </button>
-                <button type="button" data-action="search-selection-brave">
-                    <i
-                        class="fa-solid fa-magnifying-glass"
-                        aria-hidden="true"
-                    ></i>
-                    <span>Brave</span>
-                </button>
-            </div>
-        </div>
+		<div class="selection-menu" data-selection-menu aria-label="Selected text tools" hidden>
+			<div class="selection-summary">
+				<span class="selection-summary-icon" aria-hidden="true">
+					<i class="fa-solid fa-text-height"></i>
+				</span>
+				<span class="selection-summary-copy">
+					<strong>Selected text</strong>
+					<span class="selection-count" data-selection-count>0 characters</span>
+				</span>
+			</div>
+			<div class="selection-actions">
+				<button type="button" data-action="copy-selection">
+					<i class="fa-regular fa-copy" aria-hidden="true"></i>
+					<span>Copy</span>
+				</button>
+				<button type="button" data-action="qr-selection">
+					<i class="fa-solid fa-qrcode" aria-hidden="true"></i>
+					<span>QR code</span>
+				</button>
+				<div class="selection-search" data-selection-search hidden>
+					<div class="selection-search-direct" data-selection-search-direct></div>
+					<button
+						type="button"
+						class="selection-search-toggle"
+						data-action="toggle-selection-search"
+						aria-controls="selection-search-options"
+						aria-expanded="false"
+						hidden
+					>
+						<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+						<span>Search with</span>
+						<span class="selection-search-count" data-selection-search-count></span>
+						<i class="fa-solid fa-chevron-down selection-disclosure-icon" aria-hidden="true"></i>
+					</button>
+					<div
+						id="selection-search-options"
+						class="selection-search-options"
+						data-selection-search-options
+						hidden
+					></div>
+				</div>
+			</div>
+		</div>
         <div class="page-load-mask" data-page-load-mask aria-hidden="true">
             <img class="page-load-logo" src="" alt="" data-page-load-logo />
         </div>
